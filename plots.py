@@ -66,18 +66,6 @@ def plot_workout_frequency_by_weekday(df):
     plt.tight_layout()
     plt.show()
 
-def run_regression(df):
-    
-    # Convert Id to categorical (factor)
-    df['Id'] = df['Id'].astype('category')
-    
-    # Fit model
-    model = smf.ols('Calories ~ TotalSteps + C(Id)', data=df).fit()
-    
-    print(model.summary())
-    
-    return model
-
 def plot_regression_for_user(df, model, user_id):
     
     user_data = df[df['Id'] == user_id]
@@ -107,22 +95,3 @@ def plot_regression_for_user(df, model, user_id):
     plt.title(f"Calories vs Steps (User {user_id})")
     plt.tight_layout()
     plt.show()
-
-
-def main():
-    df = pd.read_csv('daily_activity.csv')
-    summary = df.describe(include='all')
-    print(summary)
-    print("Number of unique users:", df['Id'].nunique())
-
-    plot_total_distance(df)
-
-    plot_calories_for_user(df, 1503960366)
-    plot_workout_frequency_by_weekday(df)
-
-    model = run_regression(df)
-    plot_regression_for_user(df, model, 1503960366)
-
-    
-main()
-

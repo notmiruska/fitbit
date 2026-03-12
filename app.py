@@ -8,7 +8,7 @@ import sqlite3
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from modules.data_utils import *
+from modules.data import *
 from modules.plots import *
 
 

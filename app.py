@@ -1,24 +1,165 @@
+import pandas as pd
+import os
+import matplotlib.pyplot as plt
+import statsmodels.formula.api as smf
+import numpy as np
+import matplotlib.patches as mpatches
+import sqlite3
+import streamlit as st
+import plotly.express as px
+import plotly.graph_objects as go
 from modules.data import *
-from modules.stats import *
 from modules.plots import *
+from modules.stats import *
 
-data = pd.read_csv('./data/daily_activity.csv')
 
-print('Number of unique users: ', data['Id'].nunique(), '\n')
+def main():
+    st.set_page_config(layout="wide")
+    
+    users = load_users("data/daily_activity.csv")
 
-total_distance = compute_total_distance(data)
-print('Total distance per user:\n', total_distance, '\n')
-plot_total_distance(total_distance)
+    connection = sqlite3.connect("data/fitbit_database.db")
+    cursor = connection.cursor()
 
-plot_burnt_calories(data, 1503960366, '3/25/2016', '4/09/2016')
+    minute_sleep = load_sleep_data(connection)
+    df_heartrate = load_heartrate_data(connection)
 
-workout_per_day = get_workout_per_day(data)
-plot_workout_per_day(workout_per_day)
+    # Sidebar: select a user with a placeholder default
+    user_options = [""] + list(users)  # "" will be the default placeholder
+    selected_user = st.sidebar.selectbox("Select a user", options=user_options, index=0)
 
-# relationship between calories and steps taken
-print(steps_calories_regression(data))
-plot_calories(data, 1503960366)
+    if selected_user != "":
+        person_id = selected_user
 
-# extra
-distance_by_activity_level = get_distance_by_activity_level(data)
-plot_distance_by_activity_level(distance_by_activity_level)
+        st.title("Fitbit User Dashboard")
+        st.subheader(f"User {person_id}")
+
+        # Filter data once
+        df_sleep_person = minute_sleep[minute_sleep["Id"] == person_id]
+        df_hr_person = df_heartrate[df_heartrate["Id"] == person_id]
+
+        # -----------------------------
+        # Tabs for plots
+        # -----------------------------
+        tab1, tab2 = st.tabs(["Sleep", "Heartrate"])
+
+        # -----------------------------
+        # SLEEP TAB
+        # -----------------------------
+        with tab1:
+
+            if df_sleep_person.empty:
+                st.warning("No sleep data available.")
+            else:
+                main_sleep, naps, sleep_hours_line, merged_df = process_sleep_sessions(
+                    df_sleep_person, nap_threshold=3
+                    )
+
+                col1, = st.columns(1)
+
+
+                with col1:
+                    avg_hr = round(sleep_hours_line.mean(), 1)
+                    st.metric("Mean sleep hours per night", f"{avg_hr} hours")
+
+
+
+                st.divider()
+
+                col1, col2 = st.columns(2)
+                with col1:
+
+                    fig_sleep = plot_sleep_timeline(
+                    main_sleep, naps, sleep_hours_line, merged_df, person_id
+                    )
+                    st.plotly_chart(fig_sleep, use_container_width=True)
+
+
+        # -----------------------------
+        # HEARTRATE TAB
+        # -----------------------------
+        with tab2:
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if not df_hr_person.empty:
+                    avg_hr = round(df_hr_person["Value"].mean(), 1)
+                    st.metric("Average Heartrate", f"{avg_hr} bpm")
+
+            with col2:
+                if not df_hr_person.empty:
+                    max_hr = df_hr_person["Value"].max()
+                    st.metric("Max Heartrate", f"{max_hr} bpm")
+
+            st.divider()
+
+            if df_hr_person.empty:
+                st.warning("No heartrate data available.")
+            else:
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.subheader("Last 24 hours")
+                    fig_hr_24 = last_24_hours_plot(df_hr_person, person_id)
+                    st.plotly_chart(fig_hr_24, width="stretch")
+
+                with col2:
+                    st.subheader("Daily statistics")
+                    fig_hr_stats = plot_stats_heartrate(df_hr_person, person_id)
+                    st.plotly_chart(fig_hr_stats, width="stretch")
+
+
+
+        
+    
+
+
+    st.write("Hello, let's learn how to build a streeamlit app together")
+    st.title("This is the app title")
+    st.header("This is the header")
+    st.markdown("This is the markdown")
+    st.subheader("This is the subheader")
+    st.caption("This is the caption")
+    st.code("x = 2021")
+    st.latex(r''' a+a r^1+a r^2+a r^3 ''')
+    st.checkbox('Yes')
+    st.button('Click Me')
+    gender = st.radio('Pick your gender', ['Male', 'Female'])
+    if gender == "Female":
+        st.selectbox('Pick a fruit', ['Apple', 'Banana', 'Orange','Grapes'])
+    if gender == 'Male':
+        st.selectbox('Pick a fruit', ['Apple', 'Banana', 'Orange'])
+    options =['Jupiter', 'Mars', 'Neptune', 'Earth', 'Venus', 'Pluto', 'Uranus',
+    'Mercury']
+    choice = st.selectbox('Choose a planet', options)
+    st.write("You selected", choice)
+    Mark = st.select_slider('Pick a mark', ['Bad', 'Good', 'Excellent'])
+    if Mark == 'Bad':
+        st.write("Boo!")
+    if Mark == 'Good':
+        st.write("Well done!")
+    if Mark == 'Excellent':
+        st.write("Great!")
+    nm = st.slider('Pick a number', 0, 50)
+    st.write("Your number: ", nm)
+    st.number_input('Pick a number', 0, 10)
+    st.text_input('Email address')
+    st.date_input('Traveling date')
+    st.time_input('School time')
+    st.text_area('Description')
+    st.file_uploader('Upload a photo')
+    st.color_picker('Choose your favorite color')
+    st.sidebar.title("Sidebar Title")
+    st.sidebar.markdown("This is the sidebar content")
+    st.sidebar.button("Click me!")
+    st.sidebar.radio('Pick your sidebar gender', ['Male', 'Female'])
+    rand = np.random.normal(1,2,size = 200)
+    fig, ax = plt.subplots()
+    ax.hist(rand, bins = 15)
+    st.pyplot(fig)
+    df = pd.DataFrame(np.random.randn(10, 2), columns=['x', 'y'])
+    st.line_chart(df)
+
+main()

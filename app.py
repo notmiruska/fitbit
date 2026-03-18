@@ -8,25 +8,44 @@ import sqlite3
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from modules.data import *
-from modules.plots import *
+from modules.plots import plot_total_intensity_hourly, plot_sleep_timeline, last_24_hours_plot, plot_stats_heartrate
+from modules.data import load_users, load_sleep_data, load_heartrate_data, load_activity_data, process_sleep_sessions
 from modules.stats import *
 
+#CACHED FUNCTIONS
 
+@st.cache_resource
+def get_connection(db_path):
+    return sqlite3.connect(db_path)
+
+@st.cache_data
+def cached_load_users(path):
+    return load_users(path)
+
+@st.cache_data
+def cached_load_sleep_data(_connection):
+    return load_sleep_data(_connection)
+
+@st.cache_data
+def cached_load_heartrate_data(_connection):
+    return load_heartrate_data(_connection)
+
+@st.cache_data
+def cached_load_activity_data(_connection):
+    return load_activity_data(_connection)
+
+# MAIN DASHBOARD
 def main():
     st.set_page_config(layout="wide")
-    
-    users = load_users("data/daily_activity.csv")
-
-    connection = sqlite3.connect("data/fitbit_database.db")
-    cursor = connection.cursor()
-
-    minute_sleep = load_sleep_data(connection)
-    df_heartrate = load_heartrate_data(connection)
-    df_activity = load_activity_data(connection)
+        # Load data
+    connection = get_connection("data/fitbit_database.db")
+    users = cached_load_users("data/daily_activity.csv")
+    minute_sleep = cached_load_sleep_data(connection)
+    df_heartrate = cached_load_heartrate_data(connection)
+    df_activity = cached_load_activity_data(connection)
 
     # Sidebar: select a user with a placeholder default
-    user_options = [""] + list(users)  # "" will be the default placeholder
+    user_options = [""] + list(users)
     selected_user = st.sidebar.selectbox("Select a user", options=user_options, index=0)
 
     if selected_user != "":
@@ -35,19 +54,14 @@ def main():
         st.title("Fitbit User Dashboard")
         st.subheader(f"User {person_id}")
 
-        # Filter data once
         df_sleep_person = minute_sleep[minute_sleep["Id"] == person_id]
         df_hr_person = df_heartrate[df_heartrate["Id"] == person_id]
         df_activity_person = df_activity[df_activity["Id"] == person_id]
 
-        # -----------------------------
-        # Tabs for plots
-        # -----------------------------
+        #TABS FOR USERS
         tab1, tab2, tab3 = st.tabs(["Sleep", "Heartrate", "Activity"])
 
-        # -----------------------------
         # SLEEP TAB
-        # -----------------------------
         with tab1:
 
             if df_sleep_person.empty:
@@ -76,11 +90,7 @@ def main():
                     )
                     st.plotly_chart(fig_sleep, use_container_width=True)
 
-
-        # -----------------------------
         # HEARTRATE TAB
-        # -----------------------------
-
         with tab2:
 
             col1, col2 = st.columns(2)
@@ -113,10 +123,7 @@ def main():
                     fig_hr_stats = plot_stats_heartrate(df_hr_person, person_id)
                     st.plotly_chart(fig_hr_stats, width="stretch")
 
-        # -----------------------------
         # ACTIVITY TAB
-        # -----------------------------
-
         with tab3:
             if df_activity_person.empty:
                 st.warning("No activity data available.")
@@ -137,7 +144,7 @@ def main():
                         max_value=max_date
                     )
                     # Filter data for that day
-                    df_to_plot = df_activity_person[df_activity_person["ActivityHourstrea"].dt.date == selected_date]
+                    df_to_plot = df_activity_person[df_activity_person["ActivityHour"].dt.date == selected_date]
 
                     if df_to_plot.empty:
                         st.warning("No activity data for this day.")

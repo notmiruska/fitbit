@@ -4,7 +4,8 @@ import statsmodels.formula.api as smf
 import plotly.graph_objects as go
 import numpy as np
 import seaborn as sns
-from modules.data import *
+import plotly.express as px
+from data import *
 
 def plot_total_distance(df):
     total_distance_per_user = df.groupby('Id')['TotalDistance'].sum()
@@ -269,4 +270,24 @@ def plot_distance_by_activity_level(df):
     plt.grid(axis='x')
     plt.tight_layout()
     plt.show() 
+
+
+def plot_total_intensity_hourly(df, user_id):
+    
+    # Sort by time (important for line plots)
+    df = df.sort_values(by='ActivityHour')
+
+    # Plot ALL datapoints
+    fig = px.line(
+        df,
+        x='ActivityHour',
+        y='TotalIntensity',
+        title=f'Total Intensity Over Time (User {user_id})',
+        labels={
+            'ActivityHour': 'Time',
+            'TotalIntensity': 'Total Intensity'
+        }
+    )
+    
+    return fig
 

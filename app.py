@@ -23,6 +23,7 @@ def main():
 
     minute_sleep = load_sleep_data(connection)
     df_heartrate = load_heartrate_data(connection)
+    df_activity = load_activity_data(connection)
 
     # Sidebar: select a user with a placeholder default
     user_options = [""] + list(users)  # "" will be the default placeholder
@@ -37,11 +38,12 @@ def main():
         # Filter data once
         df_sleep_person = minute_sleep[minute_sleep["Id"] == person_id]
         df_hr_person = df_heartrate[df_heartrate["Id"] == person_id]
+        df_activity_person = df_activity[df_activity["Id"] == person_id]
 
         # -----------------------------
         # Tabs for plots
         # -----------------------------
-        tab1, tab2 = st.tabs(["Sleep", "Heartrate"])
+        tab1, tab2, tab3 = st.tabs(["Sleep", "Heartrate", "Activity"])
 
         # -----------------------------
         # SLEEP TAB
@@ -78,6 +80,7 @@ def main():
         # -----------------------------
         # HEARTRATE TAB
         # -----------------------------
+
         with tab2:
 
             col1, col2 = st.columns(2)
@@ -110,11 +113,41 @@ def main():
                     fig_hr_stats = plot_stats_heartrate(df_hr_person, person_id)
                     st.plotly_chart(fig_hr_stats, width="stretch")
 
+        # -----------------------------
+        # ACTIVITY TAB
+        # -----------------------------
 
+        with tab3:
+            if df_activity_person.empty:
+                st.warning("No activity data available.")
+            else:
+                # Get min/max available dates
+                min_date = df_activity_person["ActivityHour"].min().date()
+                max_date = df_activity_person["ActivityHour"].max().date()
 
-        
-    
+                # Checkbox to filter by specific day
+                filter_by_day = st.checkbox("Filter by specific day", value=False)
 
+                if filter_by_day:
+                    # Show calendar picker
+                    selected_date = st.date_input(
+                        "Select a day to display",
+                        value=max_date,
+                        min_value=min_date,
+                        max_value=max_date
+                    )
+                    # Filter data for that day
+                    df_to_plot = df_activity_person[df_activity_person["ActivityHourstrea"].dt.date == selected_date]
+
+                    if df_to_plot.empty:
+                        st.warning("No activity data for this day.")
+                    else:
+                        fig = plot_total_intensity_hourly(df_to_plot, person_id)
+                        st.plotly_chart(fig, use_container_width=True)
+                else:
+                    # Show all days by default
+                    fig = plot_total_intensity_hourly(df_activity_person, person_id)
+                    st.plotly_chart(fig, use_container_width=True)
 
     st.write("Hello, let's learn how to build a streeamlit app together")
     st.title("This is the app title")
@@ -162,4 +195,5 @@ def main():
     df = pd.DataFrame(np.random.randn(10, 2), columns=['x', 'y'])
     st.line_chart(df)
 
-main()
+if __name__ == "__main__":
+    main()

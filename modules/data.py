@@ -27,6 +27,11 @@ def load_heartrate_data(connection):
     df_heartrate['Id'] = df_heartrate['Id'].astype(int)
     return df_heartrate
 
+def load_activity_data(connection):
+    df_activity = pd.read_sql_query("SELECT * FROM hourly_intensity;", connection)
+    df_activity['ActivityHour'] = pd.to_datetime(df_activity['ActivityHour'])
+    return df_activity
+
 def process_sleep_sessions(df_person, nap_threshold=3):
     """Process sleep sessions for a single user"""
     # Group by logId

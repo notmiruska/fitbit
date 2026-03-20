@@ -1,6 +1,8 @@
 import pandas as pd
 from datetime import datetime
 import numpy as np
+import requests
+import urllib.parse
 
 def read_csv(path):
     df = pd.read_csv(path)
@@ -34,6 +36,7 @@ def load_activity_data(connection):
 
 def load_daily_activity(connection):
     df_daily_activity = pd.read_sql_query("SELECT * FROM daily_activity;", connection)
+    df_daily_activity["Date"] = pd.to_datetime(df_daily_activity["Date"])
     return df_daily_activity
 
 def classify_user(df, person_id):
@@ -145,3 +148,35 @@ def get_distance_by_activity_level(df):
     df = df.drop(columns='TotalDistance')
 
     return df  
+
+def download_weather_data():
+    API_KEY = "6UWULDKFGEFMZXP7VMJDECQ7P"
+    UnitGroup = 'us'
+    StartDate = '2016-03-12'
+    EndDate = '2016-04-12'
+    location = "Chicago,IL,USA"
+    ContentType = "csv"
+
+    url = (
+        f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"
+        f"{location}/{StartDate}/{EndDate}?unitGroup={UnitGroup}&key={API_KEY}&contentType={ContentType}&include=days"
+    )
+
+    try:
+        weather_df = pd.read_csv(url)
+        weather_df = weather_df.drop(columns=['feelslikemax',
+       'feelslikemin', 'feelslike', 'dew', 'humidity','precipprob',
+       'precipcover', 'snow', 'snowdepth', 'windgust',
+       'windspeed', 'winddir', 'sealevelpressure', 'cloudcover', 'visibility',
+       'solarradiation', 'solarenergy', 'uvindex', 'severerisk', 'sunrise',
+       'sunset', 'moonphase', 'conditions', 'description', 'icon', 'stations'])
+        print(weather_df.head()) 
+        print(weather_df.columns)
+        weather_df.to_csv("chicago_weather.csv", index=False)
+        print("Weather data saved to chicago_weather.csv!")
+        return weather_df
+    except Exception as e:
+        print(f"Failed to download weather data: {e}")
+        return None
+
+download_weather_data()

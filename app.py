@@ -8,8 +8,8 @@ import sqlite3
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from modules.plots import plot_total_intensity_hourly, plot_sleep_timeline, last_24_hours_plot, plot_stats_heartrate
-from modules.data import load_users, load_sleep_data, load_heartrate_data, load_activity_data, process_sleep_sessions
+from modules.plots import plot_total_intensity_hourly, plot_sleep_timeline, last_24_hours_plot, plot_stats_heartrate, plot_user_class
+from modules.data import load_users, load_sleep_data, load_heartrate_data, load_activity_data, process_sleep_sessions, load_daily_activity, classify_user
 from modules.stats import *
 
 #CACHED FUNCTIONS
@@ -34,6 +34,10 @@ def cached_load_heartrate_data(_connection):
 def cached_load_activity_data(_connection):
     return load_activity_data(_connection)
 
+@st.cache_data
+def cached_load_daily_activity(_connection):
+    return load_daily_activity(_connection)
+
 # MAIN DASHBOARD
 def main():
     st.set_page_config(layout="wide")
@@ -43,6 +47,7 @@ def main():
     minute_sleep = cached_load_sleep_data(connection)
     df_heartrate = cached_load_heartrate_data(connection)
     df_activity = cached_load_activity_data(connection)
+    df_daily_activity = cached_load_daily_activity(connection)
 
     # Sidebar: select a user with a placeholder default
     user_options = [""] + list(users)
@@ -59,10 +64,16 @@ def main():
         df_activity_person = df_activity[df_activity["Id"] == person_id]
 
         #TABS FOR USERS
-        tab1, tab2, tab3 = st.tabs(["Sleep", "Heartrate", "Activity"])
+        tab1, tab2, tab3, tab4 = st.tabs(["General Stats", "Sleep", "Heartrate", "Activity"])
+
+        #General TAB
+        with tab1:
+            n_activities, user_class = classify_user(df_daily_activity, person_id)
+            fig_activity = plot_user_class(n_activities)
+            st.plotly_chart(fig_activity, use_container_width=True)
 
         # SLEEP TAB
-        with tab1:
+        with tab2:
 
             if df_sleep_person.empty:
                 st.warning("No sleep data available.")
@@ -91,7 +102,7 @@ def main():
                     st.plotly_chart(fig_sleep, use_container_width=True)
 
         # HEARTRATE TAB
-        with tab2:
+        with tab3:
 
             col1, col2 = st.columns(2)
 
@@ -124,7 +135,7 @@ def main():
                     st.plotly_chart(fig_hr_stats, width="stretch")
 
         # ACTIVITY TAB
-        with tab3:
+        with tab4:
             if df_activity_person.empty:
                 st.warning("No activity data available.")
             else:

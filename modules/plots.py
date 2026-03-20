@@ -5,7 +5,9 @@ import plotly.graph_objects as go
 import numpy as np
 import seaborn as sns
 import plotly.express as px
+import math
 from data import *
+
 
 def plot_total_distance(df):
     total_distance_per_user = df.groupby('Id')['TotalDistance'].sum()
@@ -289,5 +291,49 @@ def plot_total_intensity_hourly(df, user_id):
         }
     )
     
+    return fig
+
+def plot_user_class(n_activities):
+    # Labels en waarden voor de half-circle
+    labels = ["Light (0–10)", "Moderate (11–15)", "Heavy (16+)", ""]
+    values = [10, 5, 17, 32]  # laatste slice dummy
+
+    colors = ["#2a9d8f", "#e9c46a", "#e76f51", "rgba(0,0,0,0)"]
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Pie(
+        labels=labels,
+        values=values,
+        marker=dict(colors=colors),
+        hole=0.5,
+        rotation=270,       # kwartslag naar rechts
+        direction="clockwise",
+        textinfo="label",
+        textposition="inside",
+        sort=False
+    ))
+
+    max_val = 32
+    start_angle = 270
+    end_angle = start_angle - 180 
+    angle = start_angle - (180 * (n_activities / max_val))
+
+    # Bereken waar de naald moet wijzen
+    x = 0.5 + 0.4 * math.cos(math.radians(270 - angle))
+    y = 0.5 + 0.4 * math.sin(math.radians(270 - angle))
+
+    fig.add_shape(
+        type="line",
+        x0=0.5, y0=0.5,
+        x1=x, y1=y,
+        line=dict(color="black", width=4)
+    )
+
+    fig.update_layout(
+        showlegend=False,
+        margin=dict(t=0, b=0, l=0, r=0)
+    )
+
     return fig
 

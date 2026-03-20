@@ -32,6 +32,20 @@ def load_activity_data(connection):
     df_activity['ActivityHour'] = pd.to_datetime(df_activity['ActivityHour'])
     return df_activity
 
+def load_daily_activity(connection):
+    df_daily_activity = pd.read_sql_query("SELECT * FROM daily_activity;", connection)
+    return df_daily_activity
+
+def classify_user(df, person_id):
+    person_count = len(df[df["Id"] == person_id])
+
+    user_class = (
+        'Light user' if person_count <= 10 
+        else 'Moderate user' if 11 <= person_count <= 15 
+        else 'Heavy user'
+    )
+    return person_count, user_class
+
 def process_sleep_sessions(df_person, nap_threshold=3):
     """Process sleep sessions for a single user"""
     # Group by logId

@@ -64,12 +64,12 @@ def main():
         df_activity_person = df_activity[df_activity["Id"] == person_id]
 
         #TABS FOR USERS
-        tab1, tab2, tab3, tab4 = st.tabs(["General Stats", "Sleep", "Heartrate", "Activity"])
+        tab1, tab2, tab3, tab4 = st.tabs(["General Stats", "Sleep", "Heartrate", "Intensity"])
 
         #General TAB
         with tab1:
             n_activities, user_class = classify_user(df_daily_activity, person_id)
-            fig_activity = plot_user_class(n_activities)
+            fig_activity = plot_user_class(n_activities, user_class)
             st.plotly_chart(fig_activity, use_container_width=True)
 
         # SLEEP TAB

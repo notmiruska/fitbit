@@ -8,8 +8,8 @@ import sqlite3
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from modules.plots import plot_total_intensity_hourly, plot_sleep_timeline, last_24_hours_plot, plot_stats_heartrate, plot_user_class
-from modules.data import load_users, load_sleep_data, load_heartrate_data, load_activity_data, process_sleep_sessions, load_daily_activity, classify_user
+from modules.plots import plot_total_intensity_hourly, plot_sleep_timeline, last_24_hours_plot, plot_stats_heartrate, plot_user_class, plot_activity_vs_weather, barplot_steps_vs_precip
+from modules.data import load_users, load_sleep_data, load_heartrate_data, load_activity_data, process_sleep_sessions, load_daily_activity, classify_user, download_weather_data, merge_weather_and_steps_data
 from modules.stats import *
 
 #CACHED FUNCTIONS
@@ -42,12 +42,14 @@ def cached_load_daily_activity(_connection):
 def main():
     st.set_page_config(layout="wide")
         # Load data
+    API_KEY = "6UWULDKFGEFMZXP7VMJDECQ7P"
     connection = get_connection("data/fitbit_database.db")
     users = cached_load_users("data/daily_activity.csv")
     minute_sleep = cached_load_sleep_data(connection)
     df_heartrate = cached_load_heartrate_data(connection)
     df_activity = cached_load_activity_data(connection)
     df_daily_activity = cached_load_daily_activity(connection)
+    df_weather = download_weather_data(API_KEY)
 
     # Sidebar: select a user with a placeholder default
     user_options = [""] + list(users)
@@ -71,6 +73,16 @@ def main():
             n_activities, user_class = classify_user(df_daily_activity, person_id)
             fig_activity = plot_user_class(n_activities, user_class)
             st.plotly_chart(fig_activity, use_container_width=True)
+
+            df_merged = merge_weather_and_steps_data(df_weather, df_daily_activity, person_id)
+            cols = st.columns(2)
+            with cols[0]:
+                fig_steps_temp = plot_activity_vs_weather(df_merged, person_id)
+                st.plotly_chart(fig_steps_temp, use_container_width=True)
+            with cols[1]:
+                fig_steps_precip = barplot_steps_vs_precip(df_merged, person_id)
+                st.plotly_chart(fig_steps_precip, use_container_width=True)
+    
 
         # SLEEP TAB
         with tab2:

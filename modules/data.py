@@ -36,7 +36,7 @@ def load_activity_data(connection):
 
 def load_daily_activity(connection):
     df_daily_activity = pd.read_sql_query("SELECT * FROM daily_activity;", connection)
-    df_daily_activity["Date"] = pd.to_datetime(df_daily_activity["Date"])
+    df_daily_activity["ActivityDate"] = pd.to_datetime(df_daily_activity["ActivityDate"])
     return df_daily_activity
 
 def classify_user(df, person_id):
@@ -149,8 +149,7 @@ def get_distance_by_activity_level(df):
 
     return df  
 
-def download_weather_data():
-    API_KEY = "6UWULDKFGEFMZXP7VMJDECQ7P"
+def download_weather_data(API_KEY):
     UnitGroup = 'us'
     StartDate = '2016-03-12'
     EndDate = '2016-04-12'
@@ -178,5 +177,11 @@ def download_weather_data():
     except Exception as e:
         print(f"Failed to download weather data: {e}")
         return None
+    
+def merge_weather_and_steps_data(df_weather, df_daily_activity, user_id):
+    df_user = df_daily_activity[df_daily_activity['Id'] == user_id].copy()
+    df_user['ActivityDate'] = pd.to_datetime(df_user['ActivityDate'])
+    df_weather['datetime'] = pd.to_datetime(df_weather['datetime'])
+    df_merged = pd.merge(df_user, df_weather, left_on='ActivityDate', right_on='datetime', how='left')
+    return df_merged
 
-download_weather_data()

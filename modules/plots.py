@@ -318,8 +318,75 @@ def plot_user_class(n_activities, user_class):
         y=0.25,
         text=user_class,
         showarrow=False,
-        font=dict(size=16)
+        font=dict(size=20)
     )
 
     return fig
+
+def plot_activity_vs_weather(df_merged, user_id):
+    
+    fig = go.Figure()
+
+    # Left axis (Steps)
+    fig.add_trace(go.Bar(
+        x=df_merged['ActivityDate'],
+        y=df_merged['TotalSteps'],  
+        name='Steps',
+        yaxis='y1',
+        marker_color= "#2a9d8f",
+        opacity=0.7
+    ))
+    
+    # Right axis (Temp)
+    fig.add_trace(go.Scatter(
+        x=df_merged['ActivityDate'],
+        y=df_merged['temp'],
+        name='Avg Temp',
+        yaxis='y2',
+        mode='lines+markers',
+        line=dict(color="#e76f51", width=2)
+    ))
+    
+
+    fig.update_layout(
+        title=f"Total steps vs Average temperature for User {user_id}",
+        xaxis=dict(title='Date'),
+        yaxis=dict(
+            title='Steps',
+            side='left',
+            showgrid=False
+        ),
+        yaxis2=dict(
+            title='Average Temperature (°F)',
+            overlaying='y',
+            side='right',
+            showgrid=False
+        ),
+        legend=dict(x=0.1, y=1.1, orientation='h'),
+        template='plotly_white'
+    )
+    return fig
+
+def barplot_steps_vs_precip(df_merged, user_id):
+
+    df_merged['Had_Precip'] = df_merged['precip'].apply(lambda x: 'Yes' if x > 0 else 'No')
+    avg_steps = df_merged.groupby('Had_Precip')['TotalSteps'].mean().reset_index()
+
+    fig = px.bar(
+        avg_steps,
+        x='Had_Precip',
+        y='TotalSteps',
+        color='Had_Precip',
+        color_discrete_map={'With precipitation':"#e9c46a",'Without precipitation':"#e9c46a"},
+        text='TotalSteps',
+        title=f"Average Steps on days with or withour precipitation for User {user_id}"
+    )
+    
+    fig.update_layout(
+        yaxis_title="Average Total Steps",
+        showlegend=False,
+        template="plotly_white"
+    )
+    return fig
+
 

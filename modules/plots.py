@@ -327,9 +327,9 @@ def plot_user_class(n_activities, user_class):
             'axis': {'range': [0, 32]},
             'bar': {'color': "white"},
             'steps': [
-                {'range': [0, 10], 'color': "#2a9d8f"},
-                {'range': [10, 15], 'color': "#e9c46a"},
-                {'range': [15, 32], 'color': "#e76f51"}
+                {'range': [0, 10], 'color': "#60a7e5"},
+                {'range': [10, 15], 'color': "#4968b0"},
+                {'range': [15, 32], 'color': "#343cac"}
             ],
         }
     ))

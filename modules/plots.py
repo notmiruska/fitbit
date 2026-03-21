@@ -359,7 +359,7 @@ def plot_activity_vs_weather(df_merged, user_id):
         y=df_merged['TotalSteps'],  
         name='Steps',
         yaxis='y1',
-        marker_color= "#2a9d8f",
+        marker_color= "#4b70b5",
         opacity=0.7
     ))
     
@@ -370,7 +370,7 @@ def plot_activity_vs_weather(df_merged, user_id):
         name='Avg Temp',
         yaxis='y2',
         mode='lines+markers',
-        line=dict(color="#e76f51", width=2)
+        line=dict(color="#130f4b", width=2)
     ))
     
 
@@ -404,7 +404,7 @@ def barplot_steps_vs_precip(df_merged, user_id):
         x='Had_Precip',
         y='TotalSteps',
         color='Had_Precip',
-        color_discrete_map={'Yes':"#e9c46a",'No':"#e9c46a"},
+        color_discrete_map={'Yes':"#4968b0",'No':"#4968b0"},
         text='TotalSteps',
         title=f"Average Steps on days with or withour precipitation for User {user_id}"
     )

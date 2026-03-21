@@ -119,7 +119,8 @@ def main():
     df_heartrate = cached_load_heartrate_data(connection)
     df_activity = cached_load_activity_data(connection)
     df_daily_activity = cached_load_daily_activity(connection)
-    df_weather = download_weather_data(API_KEY)
+    df_weather = pd.read_csv("data/chicago_weather.csv")
+    print(df_weather.head())
     df_weight = cached_load_weight_data(connection)
     data, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks = load_data()
 

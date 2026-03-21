@@ -8,11 +8,34 @@ import sqlite3
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from modules.plots import plot_total_intensity_hourly, plot_sleep_timeline, last_24_hours_plot, plot_stats_heartrate, plot_user_class, plot_activity_vs_weather, barplot_steps_vs_precip
-from modules.data import load_users, load_sleep_data, load_heartrate_data, load_activity_data, process_sleep_sessions, load_daily_activity, classify_user, download_weather_data, merge_weather_and_steps_data, load_weight_data
+from modules.plots import *
+from modules.data import *
 from modules.stats import *
 
 #CACHED FUNCTIONS
+
+@st.cache_data(show_spinner=False)
+def load_data():
+    data = load_and_prepare('data/daily_activity.csv')
+    users = data['Id'].unique()
+    
+    connection = sqlite3.connect("data/fitbit_database.db")
+
+    minute_sleep = load_sleep_data(connection)
+    df_heartrate = load_heartrate_data(connection)
+
+    # note: would be nice to clean this up
+    daily_activity = get_total_distance(data)
+    workout_per_day = get_workout_per_day(data)
+    sleep_and_activity = merge_sleep_and_activity_data(connection)
+    steps_blocks = get_steps_per_block(connection)
+    calories_blocks = get_calories_per_block(connection)
+    sleep_blocks = get_sleep_per_block(connection)
+
+    connection.close()
+
+    return data, users, minute_sleep, df_heartrate, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks
+
 
 @st.cache_resource
 def get_connection(db_path):
@@ -42,6 +65,53 @@ def cached_load_daily_activity(_connection):
 def cached_load_weight_data(_connection):
     return load_weight_data(_connection)
 
+
+def display_general_stats(data, users, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks):
+    st.title("Fitbit Dashboard")
+    st.header("General Statistics")
+    
+    # initialize tabs
+    tabs = st.tabs(['Overview', 'Activity Metrics', 'Sleep Metrics'])
+
+    # Overview
+    with tabs[0]:
+        cols = st.columns(4)
+        cols[0].metric("Number of Users", len(users))
+        cols[1].metric("Average Walked Distance (m)", round(daily_activity['TotalDistance'].mean(), 2))
+
+        cols = st.columns(2)
+        with cols[0]:
+            # slider: display top 5 users by default, can slide up to 35
+            number_of_users_to_show = st.slider(
+                "Select number of users to display",
+                min_value=5,
+                max_value=len(users),
+                value=min(5, len(users))
+            )
+            data_to_show = daily_activity.head(number_of_users_to_show)
+            st.plotly_chart(
+                plot_total_distance(data_to_show), 
+                use_container_width=True)
+            
+            st.plotly_chart(plot_workout_per_day(workout_per_day), use_container_width=True)
+            
+        with cols[1]:
+            st.plotly_chart(plot_regression_steps_calories(data))
+            st.plotly_chart(plot_steps_per_block(steps_blocks))
+    
+    # Activity Metrics
+    with tabs[1]:
+        st.plotly_chart(plot_calories_per_block(calories_blocks))
+
+    # Sleep Metrics
+    with tabs[2]:
+        cols = st.columns(2)
+        with cols[0]:
+            st.plotly_chart(plot_regression_sleep_sedentary(sleep_and_activity))
+        with cols[1]:
+            st.plotly_chart(plot_sleep_per_block(sleep_blocks))
+
+
 # MAIN DASHBOARD
 def main():
     st.set_page_config(layout="wide")
@@ -56,9 +126,14 @@ def main():
     df_weather = download_weather_data(API_KEY)
     df_weight = cached_load_weight_data(connection)
 
+
     # Sidebar: select a user with a placeholder default
     user_options = [""] + list(users)
     selected_user = st.sidebar.selectbox("Select a user", options=user_options, index=0)
+
+    if selected_user == "":
+        display_general_stats(data, users, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks)
+
 
     if selected_user != "":
         person_id = selected_user
@@ -191,51 +266,6 @@ def main():
                     fig = plot_total_intensity_hourly(df_activity_person, person_id)
                     st.plotly_chart(fig, use_container_width=True)
 
-    st.write("Hello, let's learn how to build a streeamlit app together")
-    st.title("This is the app title")
-    st.header("This is the header")
-    st.markdown("This is the markdown")
-    st.subheader("This is the subheader")
-    st.caption("This is the caption")
-    st.code("x = 2021")
-    st.latex(r''' a+a r^1+a r^2+a r^3 ''')
-    st.checkbox('Yes')
-    st.button('Click Me')
-    gender = st.radio('Pick your gender', ['Male', 'Female'])
-    if gender == "Female":
-        st.selectbox('Pick a fruit', ['Apple', 'Banana', 'Orange','Grapes'])
-    if gender == 'Male':
-        st.selectbox('Pick a fruit', ['Apple', 'Banana', 'Orange'])
-    options =['Jupiter', 'Mars', 'Neptune', 'Earth', 'Venus', 'Pluto', 'Uranus',
-    'Mercury']
-    choice = st.selectbox('Choose a planet', options)
-    st.write("You selected", choice)
-    Mark = st.select_slider('Pick a mark', ['Bad', 'Good', 'Excellent'])
-    if Mark == 'Bad':
-        st.write("Boo!")
-    if Mark == 'Good':
-        st.write("Well done!")
-    if Mark == 'Excellent':
-        st.write("Great!")
-    nm = st.slider('Pick a number', 0, 50)
-    st.write("Your number: ", nm)
-    st.number_input('Pick a number', 0, 10)
-    st.text_input('Email address')
-    st.date_input('Traveling date')
-    st.time_input('School time')
-    st.text_area('Description')
-    st.file_uploader('Upload a photo')
-    st.color_picker('Choose your favorite color')
-    st.sidebar.title("Sidebar Title")
-    st.sidebar.markdown("This is the sidebar content")
-    st.sidebar.button("Click me!")
-    st.sidebar.radio('Pick your sidebar gender', ['Male', 'Female'])
-    rand = np.random.normal(1,2,size = 200)
-    fig, ax = plt.subplots()
-    ax.hist(rand, bins = 15)
-    st.pyplot(fig)
-    df = pd.DataFrame(np.random.randn(10, 2), columns=['x', 'y'])
-    st.line_chart(df)
-
+    
 if __name__ == "__main__":
     main()

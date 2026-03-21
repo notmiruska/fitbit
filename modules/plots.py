@@ -83,7 +83,7 @@ def plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id
         y=sleep_hours_line,
         mode='lines+markers',
         name='Main sleep (>=3h)',
-        line=dict(color='orange', width=3),
+        line=dict(color="#242a7a", width=3),
         marker=dict(size=8)
     ))
 
@@ -93,7 +93,7 @@ def plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id
         y=naps['SleepHours'],
         mode='markers',
         name='Nap (<3h)',
-        marker=dict(color='red', size=12, symbol='star')
+        marker=dict(color="#5981e4", size=12, symbol='circle')
     ))
 
     fig.update_layout(
@@ -396,6 +396,7 @@ def plot_activity_vs_weather(df_merged, user_id):
 def barplot_steps_vs_precip(df_merged, user_id):
 
     df_merged['Had_Precip'] = df_merged['precip'].apply(lambda x: 'Yes' if x > 0 else 'No')
+    df_merged['Had_Precip'] = pd.Categorical(df_merged['Had_Precip'], categories=['Yes', 'No'], ordered=True)
     avg_steps = df_merged.groupby('Had_Precip')['TotalSteps'].mean().reset_index()
     avg_steps['TotalSteps'] = np.floor(avg_steps['TotalSteps'])
 
@@ -413,7 +414,7 @@ def barplot_steps_vs_precip(df_merged, user_id):
         yaxis_title="Average Total Steps",
         xaxis_title="Precipitation (Yes/No)",
         showlegend=False,
-        template="plotly_white"
+        template="plotly_white",
     )
     return fig
 

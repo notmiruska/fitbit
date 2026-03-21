@@ -371,19 +371,21 @@ def barplot_steps_vs_precip(df_merged, user_id):
 
     df_merged['Had_Precip'] = df_merged['precip'].apply(lambda x: 'Yes' if x > 0 else 'No')
     avg_steps = df_merged.groupby('Had_Precip')['TotalSteps'].mean().reset_index()
+    avg_steps['TotalSteps'] = np.floor(avg_steps['TotalSteps'])
 
     fig = px.bar(
         avg_steps,
         x='Had_Precip',
         y='TotalSteps',
         color='Had_Precip',
-        color_discrete_map={'With precipitation':"#e9c46a",'Without precipitation':"#e9c46a"},
+        color_discrete_map={'Yes':"#e9c46a",'No':"#e9c46a"},
         text='TotalSteps',
         title=f"Average Steps on days with or withour precipitation for User {user_id}"
     )
     
     fig.update_layout(
         yaxis_title="Average Total Steps",
+        xaxis_title="Precipitation (Yes/No)",
         showlegend=False,
         template="plotly_white"
     )

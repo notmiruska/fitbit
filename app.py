@@ -8,9 +8,11 @@ import sqlite3
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
-from modules.data import *
 from modules.plots import *
+from modules.data import *
 from modules.stats import *
+
+#CACHED FUNCTIONS
 
 @st.cache_data(show_spinner=False)
 def load_data():
@@ -35,11 +37,33 @@ def load_data():
     return data, users, minute_sleep, df_heartrate, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks
 
 
-def select_user(users):
-    user_options = [""] + list(users)  # "" will be the default placeholder
-    selected_user = st.sidebar.selectbox("Select a user", options=user_options, index=0)
+@st.cache_resource
+def get_connection(db_path):
+    return sqlite3.connect(db_path)
 
-    return selected_user
+@st.cache_data
+def cached_load_users(path):
+    return load_users(path)
+
+@st.cache_data
+def cached_load_sleep_data(_connection):
+    return load_sleep_data(_connection)
+
+@st.cache_data
+def cached_load_heartrate_data(_connection):
+    return load_heartrate_data(_connection)
+
+@st.cache_data
+def cached_load_activity_data(_connection):
+    return load_activity_data(_connection)
+
+@st.cache_data
+def cached_load_daily_activity(_connection):
+    return load_daily_activity(_connection)
+
+@st.cache_data
+def cached_load_weight_data(_connection):
+    return load_weight_data(_connection)
 
 
 def display_general_stats(data, users, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks):
@@ -88,98 +112,160 @@ def display_general_stats(data, users, daily_activity, workout_per_day, sleep_an
             st.plotly_chart(plot_sleep_per_block(sleep_blocks))
 
 
-def display_sleep_tab(df_sleep_person, person_id):
-    if df_sleep_person.empty:
-        st.warning("No sleep data available.")
-        return
-    else:
-        main_sleep, naps, sleep_hours_line, merged_df = process_sleep_sessions(
-            df_sleep_person, nap_threshold=3
-        )
-
-        avg_hr = round(sleep_hours_line.mean(), 1)
-        st.metric("Mean sleep hours per night", f"{avg_hr} hours")
-
-        st.divider()
-
-        col1, col2 = st.columns(2)
-        with col1:
-            fig_sleep = plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id)
-            st.plotly_chart(fig_sleep, use_container_width=True)
-    
-
-def display_heartrate_tab(df_hr_person, person_id):
-    if df_hr_person.empty:
-        st.warning("No heartrate data available.")
-        return
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        avg_hr = round(df_hr_person["Value"].mean(), 1)
-        st.metric("Average Heartrate", f"{avg_hr} bpm")
-    with col2:
-        max_hr = df_hr_person["Value"].max()
-        st.metric("Max Heartrate", f"{max_hr} bpm")
-
-    st.divider()
-
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Last 24 hours")
-        fig_hr_24 = last_24_hours_plot(df_hr_person, person_id)
-        st.plotly_chart(fig_hr_24, width="stretch")
-
-    with col2:
-        st.subheader("Daily statistics")
-        fig_hr_stats = plot_stats_heartrate(df_hr_person, person_id)
-        st.plotly_chart(fig_hr_stats, width="stretch")
-
-
+# MAIN DASHBOARD
 def main():
     st.set_page_config(layout="wide")
+        # Load data
+    API_KEY = "6UWULDKFGEFMZXP7VMJDECQ7P"
+    connection = get_connection("data/fitbit_database.db")
+    users = cached_load_users("data/daily_activity.csv")
+    minute_sleep = cached_load_sleep_data(connection)
+    df_heartrate = cached_load_heartrate_data(connection)
+    df_activity = cached_load_activity_data(connection)
+    df_daily_activity = cached_load_daily_activity(connection)
+    df_weather = download_weather_data(API_KEY)
+    df_weight = cached_load_weight_data(connection)
 
-    # ---------------------
-    # Load data
-    # ---------------------
-    with st.spinner("Loading Fitbit Dashboard..."):
-        data, users, minute_sleep, df_heartrate, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks = load_data()
 
-    # ---------------------
-    # Sidebar: Select user
-    # ---------------------
-    selected_user = select_user(users)
+    # Sidebar: select a user with a placeholder default
+    user_options = [""] + list(users)
+    selected_user = st.sidebar.selectbox("Select a user", options=user_options, index=0)
 
-    # ---------------------
-    # General statistics
-    # ---------------------
     if selected_user == "":
         display_general_stats(data, users, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks)
 
-    # ---------------------
-    # User-specific statistics
-    # ---------------------
+
     if selected_user != "":
         person_id = selected_user
 
         st.title("Fitbit User Dashboard")
         st.subheader(f"User {person_id}")
 
-        # Filter data once
         df_sleep_person = minute_sleep[minute_sleep["Id"] == person_id]
         df_hr_person = df_heartrate[df_heartrate["Id"] == person_id]
+        df_activity_person = df_activity[df_activity["Id"] == person_id]
+        df_weight_person = df_weight[df_weight["Id"] == person_id]
 
-        # Initialize tabs
-        tab1, tab2 = st.tabs(["Sleep", "Heartrate"])
+        #TABS FOR USERS
+        tab1, tab2, tab3, tab4 = st.tabs(["General Stats", "Sleep", "Heartrate", "Intensity"])
 
-        # Sleep tab
+        #General TAB
         with tab1:
-            display_sleep_tab(df_sleep_person, person_id)
+            if not df_weight_person["WeightPounds"].empty:
+            
+                latest = df_weight_person.sort_values("Date").iloc[-1]
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Weight (lbs)", f"{latest['WeightPounds']:.1f}")
+                with col2:
+                    st.metric("BMI", f"{latest['BMI']:.1f}")
+                st.caption(f"Measured on: {latest['Date'].strftime('%Y-%m-%d')}")
+                st.divider()
         
-        # Heartrate tab
+            n_activities, user_class = classify_user(df_daily_activity, person_id)
+            fig_activity = plot_user_class(n_activities, user_class)
+            st.plotly_chart(fig_activity, use_container_width=True)
+
+            if not df_weather is None:
+                df_merged = merge_weather_and_steps_data(df_weather, df_daily_activity, person_id)
+                cols = st.columns(2)
+                with cols[0]:
+                    fig_steps_temp = plot_activity_vs_weather(df_merged, person_id)
+                    st.plotly_chart(fig_steps_temp, use_container_width=True)
+                with cols[1]:
+                    fig_steps_precip = barplot_steps_vs_precip(df_merged, person_id)
+                    st.plotly_chart(fig_steps_precip, use_container_width=True)
+    
+
+        # SLEEP TAB
         with tab2:
-            display_heartrate_tab(df_hr_person, person_id)
 
+            if df_sleep_person.empty:
+                st.warning("No sleep data available.")
+            else:
+                main_sleep, naps, sleep_hours_line, merged_df = process_sleep_sessions(df_sleep_person, nap_threshold=3)
 
-if __name__ == '__main__':
+                col1, = st.columns(1)
+
+                with col1:
+                    avg_hr = round(sleep_hours_line.mean(), 1)
+                    st.metric("Mean sleep hours per night", f"{avg_hr} hours")
+
+                st.divider()
+
+                col1, col2 = st.columns(2)
+                with col1:
+
+                    fig_sleep = plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id)
+                    st.plotly_chart(fig_sleep, use_container_width=True)
+
+        # HEARTRATE TAB
+        with tab3:
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if not df_hr_person.empty:
+                    avg_hr = round(df_hr_person["Value"].mean(), 1)
+                    st.metric("Average Heartrate", f"{avg_hr} bpm")
+
+            with col2:
+                if not df_hr_person.empty:
+                    max_hr = df_hr_person["Value"].max()
+                    st.metric("Max Heartrate", f"{max_hr} bpm")
+
+            st.divider()
+
+            if df_hr_person.empty:
+                st.warning("No heartrate data available.")
+            else:
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.subheader("Last 24 hours")
+                    fig_hr_24 = last_24_hours_plot(df_hr_person, person_id)
+                    st.plotly_chart(fig_hr_24, width="stretch")
+
+                with col2:
+                    st.subheader("Daily statistics")
+                    fig_hr_stats = plot_stats_heartrate(df_hr_person, person_id)
+                    st.plotly_chart(fig_hr_stats, width="stretch")
+
+        # ACTIVITY TAB
+        with tab4:
+            if df_activity_person.empty:
+                st.warning("No activity data available.")
+            else:
+                # Get min/max available dates
+                min_date = df_activity_person["ActivityHour"].min().date()
+                max_date = df_activity_person["ActivityHour"].max().date()
+
+                # Checkbox to filter by specific day
+                filter_by_day = st.checkbox("Filter by specific day", value=False)
+
+                if filter_by_day:
+                    # Show calendar picker
+                    selected_date = st.date_input(
+                        "Select a day to display",
+                        value=max_date,
+                        min_value=min_date,
+                        max_value=max_date
+                    )
+                    # Filter data for that day
+                    df_to_plot = df_activity_person[df_activity_person["ActivityHour"].dt.date == selected_date]
+
+                    if df_to_plot.empty:
+                        st.warning("No activity data for this day.")
+                    else:
+                        fig = plot_total_intensity_hourly(df_to_plot, person_id)
+                        st.plotly_chart(fig, use_container_width=True)
+                else:
+                    # Show all days by default
+                    fig = plot_total_intensity_hourly(df_activity_person, person_id)
+                    st.plotly_chart(fig, use_container_width=True)
+
+    
+if __name__ == "__main__":
     main()

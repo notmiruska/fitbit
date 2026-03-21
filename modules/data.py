@@ -1,6 +1,8 @@
 import pandas as pd
 from datetime import datetime
 import numpy as np
+import requests
+import urllib.parse
 
 
 def read_csv(path):
@@ -38,6 +40,31 @@ def load_heartrate_data(connection):
     df_heartrate['Date'] = df_heartrate['Time'].dt.date
     df_heartrate['Id'] = df_heartrate['Id'].astype(int)
     return df_heartrate
+
+def load_activity_data(connection):
+    df_activity = pd.read_sql_query("SELECT * FROM hourly_intensity;", connection)
+    df_activity['ActivityHour'] = pd.to_datetime(df_activity['ActivityHour'])
+    return df_activity
+
+def load_daily_activity(connection):
+    df_daily_activity = pd.read_sql_query("SELECT * FROM daily_activity;", connection)
+    df_daily_activity["ActivityDate"] = pd.to_datetime(df_daily_activity["ActivityDate"])
+    return df_daily_activity
+
+def load_weight_data(connection):
+    df_weight = pd.read_sql_query("SELECT * FROM weight_log;", connection)
+    df_weight["Date"] = pd.to_datetime(df_weight["Date"])
+    return df_weight
+
+def classify_user(df, person_id):
+    person_count = len(df[df["Id"] == person_id])
+
+    user_class = (
+        'Light user' if person_count <= 10 
+        else 'Moderate user' if 11 <= person_count <= 15 
+        else 'Heavy user'
+    )
+    return person_count, user_class
 
 def process_sleep_sessions(df_person, nap_threshold=3):
     """Process sleep sessions for a single user"""
@@ -171,10 +198,44 @@ def merge_sleep_and_activity_data(connection):
 
     return df
 
+    
+def download_weather_data(API_KEY):
+    UnitGroup = 'us'
+    StartDate = '2016-03-12'
+    EndDate = '2016-04-12'
+    location = "Chicago,IL,USA"
+    ContentType = "csv"
+
+    url = (
+        f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"
+        f"{location}/{StartDate}/{EndDate}?unitGroup={UnitGroup}&key={API_KEY}&contentType={ContentType}&include=days"
+    )
+
+    try:
+        weather_df = pd.read_csv(url)
+        weather_df = weather_df.drop(columns=['feelslikemax',
+       'feelslikemin', 'feelslike', 'dew', 'humidity','precipprob',
+       'precipcover', 'snow', 'snowdepth', 'windgust',
+       'windspeed', 'winddir', 'sealevelpressure', 'cloudcover', 'visibility',
+       'solarradiation', 'solarenergy', 'uvindex', 'severerisk', 'sunrise',
+       'sunset', 'moonphase', 'conditions', 'description', 'icon', 'stations'])
+        weather_df.to_csv("data/chicago_weather.csv", index=False)
+        print("Weather data saved to chicago_weather.csv!")
+        return weather_df
+    except Exception as e:
+        print(f"Failed to download weather data: {e}")
+        return None
+    
+def merge_weather_and_steps_data(df_weather, df_daily_activity, user_id):
+    df_user = df_daily_activity[df_daily_activity['Id'] == user_id].copy()
+    df_user['ActivityDate'] = pd.to_datetime(df_user['ActivityDate'])
+    df_weather['datetime'] = pd.to_datetime(df_weather['datetime'])
+    df_merged = pd.merge(df_user, df_weather, left_on='ActivityDate', right_on='datetime', how='left')
+    return df_merged
+
 
 def assign_blocks(df, date_column):
     df['Hour'] = pd.to_datetime(df[date_column]).dt.hour
-
     df.loc[df['Hour'] < 4, 'Block'] = '0-4'
     df.loc[(df['Hour'] >= 4) & (df['Hour'] < 8), 'Block'] = '4-8'
     df.loc[(df['Hour'] >= 8) & (df['Hour'] < 12), 'Block'] = '8-12'
@@ -188,8 +249,8 @@ def assign_blocks(df, date_column):
         ordered=True)
 
     return df
-
-
+  
+  
 def get_steps_per_block(connection):
     cursor = connection.cursor()
     cursor.execute('SELECT * FROM hourly_steps')

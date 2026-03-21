@@ -5,7 +5,10 @@ import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
 import seaborn as sns
-from modules.data import *
+import plotly.express as px
+import math
+from data import *
+
 
 
 def plot_calories_for_user(df, user_id, start_date=None, end_date=None):
@@ -96,7 +99,10 @@ def plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id
     fig.update_layout(
         title=f"Sleep Sessions Timeline for User {person_id}",
         xaxis_title="Date",
-        yaxis_title="Hours of sleep per session",
+        yaxis=dict(
+            title="Hours of sleep per session",
+            tickformat=".1f",
+        ),
         template="plotly_white",
         xaxis=dict(
             range=[
@@ -287,4 +293,123 @@ def plot_sleep_per_block(df):
     )
 
     return fig
+
+
+def plot_total_intensity_hourly(df, user_id):
+    
+    # Sort by time (important for line plots)
+    df = df.sort_values(by='ActivityHour')
+
+    # Plot ALL datapoints
+    fig = px.line(
+        df,
+        x='ActivityHour',
+        y='TotalIntensity',
+        title=f'Total Intensity Over Time (User {user_id})',
+        labels={
+            'ActivityHour': 'Time',
+            'TotalIntensity': 'Total Intensity'
+        }
+    )
+    
+    return fig
+
+def plot_user_class(n_activities, user_class):
+
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=n_activities,
+        number={'suffix': " activities"},
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={'text': "User Activity"},
+        
+        gauge={
+            'axis': {'range': [0, 32]},
+            'bar': {'color': "white"},
+            'steps': [
+                {'range': [0, 10], 'color': "#2a9d8f"},
+                {'range': [10, 15], 'color': "#e9c46a"},
+                {'range': [15, 32], 'color': "#e76f51"}
+            ],
+        }
+    ))
+
+    fig.add_annotation(
+        x=0.5,
+        y=0.25,
+        text=user_class,
+        showarrow=False,
+        font=dict(size=20)
+    )
+
+    return fig
+
+def plot_activity_vs_weather(df_merged, user_id):
+    
+    fig = go.Figure()
+
+    # Left axis (Steps)
+    fig.add_trace(go.Bar(
+        x=df_merged['ActivityDate'],
+        y=df_merged['TotalSteps'],  
+        name='Steps',
+        yaxis='y1',
+        marker_color= "#2a9d8f",
+        opacity=0.7
+    ))
+    
+    # Right axis (Temp)
+    fig.add_trace(go.Scatter(
+        x=df_merged['ActivityDate'],
+        y=df_merged['temp'],
+        name='Avg Temp',
+        yaxis='y2',
+        mode='lines+markers',
+        line=dict(color="#e76f51", width=2)
+    ))
+    
+
+    fig.update_layout(
+        title=f"Total steps vs Average temperature for User {user_id}",
+        xaxis=dict(title='Date'),
+        yaxis=dict(
+            title='Steps',
+            side='left',
+            showgrid=False
+        ),
+        yaxis2=dict(
+            title='Average Temperature (°F)',
+            overlaying='y',
+            side='right',
+            showgrid=False
+        ),
+        legend=dict(x=0.1, y=1.1, orientation='h'),
+        template='plotly_white'
+    )
+    return fig
+
+def barplot_steps_vs_precip(df_merged, user_id):
+
+    df_merged['Had_Precip'] = df_merged['precip'].apply(lambda x: 'Yes' if x > 0 else 'No')
+    avg_steps = df_merged.groupby('Had_Precip')['TotalSteps'].mean().reset_index()
+    avg_steps['TotalSteps'] = np.floor(avg_steps['TotalSteps'])
+
+    fig = px.bar(
+        avg_steps,
+        x='Had_Precip',
+        y='TotalSteps',
+        color='Had_Precip',
+        color_discrete_map={'Yes':"#e9c46a",'No':"#e9c46a"},
+        text='TotalSteps',
+        title=f"Average Steps on days with or withour precipitation for User {user_id}"
+    )
+    
+    fig.update_layout(
+        yaxis_title="Average Total Steps",
+        xaxis_title="Precipitation (Yes/No)",
+        showlegend=False,
+        template="plotly_white"
+    )
+    return fig
+
 

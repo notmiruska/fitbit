@@ -319,15 +319,21 @@ def plot_user_class(n_activities, user_class):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=n_activities,
-        number={'suffix': " activities"},
+        number={
+            'suffix': " activities",
+            'font': {'size': 28}
+        },
         domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': "User Activity"},
+        title={
+            'text': "User class based on number of activities",
+            'font': {'size': 28}
+        },
         
         gauge={
             'axis': {'range': [0, 32]},
             'bar': {'color': "white"},
             'steps': [
-                {'range': [0, 10], 'color': "#60a7e5"},
+                {'range': [0, 10], 'color': "#68a8df"},
                 {'range': [10, 15], 'color': "#4968b0"},
                 {'range': [15, 32], 'color': "#343cac"}
             ],
@@ -339,9 +345,8 @@ def plot_user_class(n_activities, user_class):
         y=0.25,
         text=user_class,
         showarrow=False,
-        font=dict(size=20)
+        font=dict(size=36)
     )
-
     return fig
 
 def plot_activity_vs_weather(df_merged, user_id):

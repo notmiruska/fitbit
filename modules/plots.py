@@ -2,20 +2,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.formula.api as smf
 import plotly.graph_objects as go
+import plotly.express as px
 import numpy as np
 import seaborn as sns
 from modules.data import *
 
-def plot_total_distance(df):
-    total_distance_per_user = df.groupby('Id')['TotalDistance'].sum()
-
-    total_distance_per_user.plot(kind='bar')
-
-    plt.xlabel("User ID")
-    plt.ylabel("Total Distance")
-    plt.title("Total Distance per User")
-
-    plt.show()
 
 def plot_calories_for_user(df, user_id, start_date=None, end_date=None):
     
@@ -48,26 +39,6 @@ def plot_calories_for_user(df, user_id, start_date=None, end_date=None):
     plt.tight_layout()
     plt.show()
 
-def plot_workout_frequency_by_weekday(df):
-    
-    df['ActivityDate'] = pd.to_datetime(df['ActivityDate'])
-    df['Weekday'] = df['ActivityDate'].dt.day_name()
-    workout_counts = df['Weekday'].value_counts()
-    
-    ordered_days = ["Monday", "Tuesday", "Wednesday", 
-                    "Thursday", "Friday", "Saturday", "Sunday"]
-    
-    workout_counts = workout_counts.reindex(ordered_days)
-    
-    plt.figure()
-    workout_counts.plot(kind='bar')
-    
-    plt.xlabel("Day of the Week")
-    plt.ylabel("Workout Frequency")
-    plt.title("Workout Frequency per Weekday (All Users)")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
 
 def plot_regression_for_user(df, model, user_id):
     
@@ -210,63 +181,110 @@ def plot_stats_heartrate(df, id):
 
     return fig
 
+
 def plot_total_distance(df):
-    sns.barplot(df, x='TotalDistance', y='Id', orient='h', color='tab:blue')
-    plt.title('Total Distance Per User')
-    plt.xlabel('Total Distance')
-    plt.ylabel('User ID')
-    plt.yticks(fontsize=7)
-    plt.grid(axis='x')
-    plt.tight_layout()
+    '''input: output of get_total_distance()'''
+
+    dynamic_height = max(400, len(df) * 25)
+    fig = px.bar(
+        df,
+        x='TotalDistance',
+        y='Id',
+        orientation='h',
+        height=dynamic_height,
+        title='Total Distance Per User', 
+    )
+
+    fig.update_layout(
+        yaxis_title='User ID',
+        xaxis_title='Total Distance',
+        yaxis={'type': 'category'},
+    )
+
+    fig.update_yaxes(categoryorder='total ascending')
     
-    plt.show()
-
-
-def plot_burnt_calories(df, user_id, start_date, end_date):
-    user_data = burnt_calories(df, user_id, start_date, end_date)
-
-    plt.plot(user_data['ConvertedDate'], user_data['Calories'])
-    plt.title(f'Calories burnt by user {user_id} per day')
-    plt.xlabel('Date')
-    plt.ylabel('Burnt calories')
-    plt.xticks(fontsize=7, rotation=30)
-    plt.tight_layout()
-
-    plt.show()
+    return fig
 
 
 def plot_workout_per_day(df):
-    sns.barplot(df, x='Weekday', y='count', color='tab:blue', 
-                order=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
-    plt.title('Workout frequency per day')
-    plt.xlabel('Day')
-    plt.ylabel('Frequency')
-    plt.show()
+    '''input: output of workout_per_day()'''
+
+    fig = px.bar(
+        df,
+        x='Weekday',
+        y='count',
+        title='Workout Frequency per Day'
+    )
+
+    return fig
 
 
-def plot_calories(df, user_id):
-    # note: check this for correctness
-    user_data = df[df['Id'] == user_id]
+def plot_regression_steps_calories(df):
+    fig = px.scatter(
+        df,
+        x='TotalSteps',
+        y='Calories',
+        trendline='ols',
+        color='Id',
+        title='Relationship Between Amount of Steps Taken and Calories Burnt'
+    )
+
+    return fig
+
+
+def plot_regression_sleep_activity(df):
+    fig = px.scatter(
+        df,
+        x='SleepDuration',
+        y='TotalActiveMinutes',
+        trendline='ols',
+        title='Relationship Between Sleep Duration and Total Active Minutes'
+    )
+
+    return fig
+
+
+def plot_regression_sleep_sedentary(df):
+    fig = px.scatter(
+        df,
+        x='SleepDuration',
+        y='SedentaryMinutes',
+        trendline='ols',
+        title='Relationship Between Sleep Duration and Sedentary Minutes'
+    )
+
+    return fig
+
+
+def plot_steps_per_block(df):
+    fig = px.bar(
+        df,
+        x='Block',
+        y='AverageSteps',
+        title='Average Steps Taken Per Time Block'
+    )
+
+    return fig
+
+
+def plot_calories_per_block(df):
+    fig = px.bar(
+        df,
+        x='Block',
+        y='AverageCalories',
+        title='Average Calories Burnt Per Time Block'
+    )
     
-    sns.regplot(data=user_data,
-                x = 'TotalSteps',
-                y='Calories',
-                scatter_kws={'alpha':0.5},
-                line_kws={'color':'tab:pink'})
-    plt.title(f'Relationship between calories and steps taken for user {user_id}')
-    plt.xlabel('Total Amount of Steps')
-    plt.ylabel('Burnt Calories')
-    plt.show()
+    return fig
 
 
-def plot_distance_by_activity_level(df):
-    df.plot.barh(stacked=True, color=['tab:pink', 'tab:olive', 'tab:cyan', 'tab:gray'])
-    plt.title('Total Distance Per User Grouped by Activity Level')
-    plt.xlabel('Distance')
-    plt.ylabel('User ID')
-    plt.yticks(fontsize=7)
-    plt.legend(['Very Active', 'Moderately Active', 'Light Active', 'Sedentary Active'])
-    plt.grid(axis='x')
-    plt.tight_layout()
-    plt.show() 
+def plot_sleep_per_block(df):
+    fig = px.bar(
+        df,
+        x='Block',
+        y='AverageSleep',
+        title='Average Sleep Duration Per Time Block'
+    )
+
+    return fig
 

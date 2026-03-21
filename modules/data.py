@@ -2,6 +2,7 @@ import pandas as pd
 from datetime import datetime
 import numpy as np
 
+
 def read_csv(path):
     df = pd.read_csv(path)
     return df
@@ -10,6 +11,17 @@ def load_users(path):
     df = pd.read_csv(path)
     users = df['Id'].unique()
     return users
+
+def load_and_prepare(path):
+    df = pd.read_csv(path)
+    df['ActivityDate'] = pd.to_datetime(df['ActivityDate'], format='%m/%d/%Y')
+    df['Weekday'] = pd.Categorical(
+        df['ActivityDate'].dt.day_name(),
+        categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 
+        ordered=True
+        )
+    
+    return df
 
 def load_sleep_data(connection):
     minute_sleep = pd.read_sql_query("SELECT * FROM minute_sleep;", connection)
@@ -69,60 +81,168 @@ def process_sleep_sessions(df_person, nap_threshold=3):
 
     return main_sleep, naps, sleep_hours_line, merged_df
 
-def compute_total_distance(df):
-    df = df.groupby('Id', as_index=False)['TotalDistance'].sum()
-    df = df.sort_values('TotalDistance', ascending=False)
-    df['Id'] = df['Id'].astype(str)
+
+def get_total_distance(df):
+    df = (df.groupby('Id', as_index=False)['TotalDistance']
+          .sum()
+          .sort_values('TotalDistance', ascending=False)
+          .assign(Id=lambda x: x['Id'].astype(str))
+    )
+    return df
+
+
+def get_workout_per_day(df):
+    df = (df['Weekday']
+          .value_counts()
+          .sort_index()
+          .reset_index()
+    )
+    return df
+
+
+def assign_date_of_activity(row):
+    if row['SleepEnd'].hour < 12:
+        return row['SleepEnd'].date()
+    else:
+        # sleep session is likely an afternoon/evening nap -> related to tommorrow's activity
+        return (row['SleepEnd'] + pd.Timedelta(days=1)).date()
+
+
+def get_sleep_duration_per_session(connection):
+    '''for regression between sleep duration & activity'''
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM minute_sleep')
+
+    rows = cursor.fetchall()
+
+    df = pd.DataFrame(rows, columns=['Id', 'date', 'value', 'logId'])
+
+    # fix data types
+    df['Id'] = df['Id'].astype(int).astype(str)
+    df['logId'] = df['logId'].astype(int).astype(str)
+    df['date'] = pd.to_datetime(df['date'])
+    
+    # sleep sessions
+    sleep_sessions = df.groupby(['Id', 'logId']).agg(
+        SleepEnd=('date', 'max'),
+        SleepDuration=('value', 'count')
+    ).reset_index()
+
+    sleep_sessions['ActivityDate'] = sleep_sessions.apply(assign_date_of_activity, axis=1)
+
+    sleep_df = sleep_sessions.groupby(['Id', 'ActivityDate'])['SleepDuration'].sum().reset_index()
+
+    return sleep_df
+
+
+def get_activity_data(connection):
+    '''for regression between sleep & activity'''
+    cursor = connection.cursor()
+    active_minutes = '''
+    SELECT
+        Id,
+        ActivityDate,
+        (VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes) as TotalActiveMinutes,
+        SedentaryMinutes
+    FROM daily_activity
+    GROUP BY Id, ActivityDate
+    '''
+    cursor.execute(active_minutes)
+    activity_data = cursor.fetchall()
+    df = pd.DataFrame(activity_data, columns = [x[0] for x in cursor.description])
+    
+    df['Id'] = df['Id'].astype(int).astype(str)
+    df['ActivityDate'] = pd.to_datetime(df['ActivityDate']).dt.date
+    
+    return df
+
+
+def merge_sleep_and_activity_data(connection):
+    '''use for regression_sleep_activity()'''
+    sleep = get_sleep_duration_per_session(connection)
+    activity = get_activity_data(connection)
+
+    df = pd.merge(
+        sleep,
+        activity,
+        on=['Id', 'ActivityDate'],
+        how='inner'
+    )
 
     return df
 
 
-def convert_date(date):
-    return datetime.strptime(date, '%m/%d/%Y')
+def assign_blocks(df, date_column):
+    df['Hour'] = pd.to_datetime(df[date_column]).dt.hour
+
+    df.loc[df['Hour'] < 4, 'Block'] = '0-4'
+    df.loc[(df['Hour'] >= 4) & (df['Hour'] < 8), 'Block'] = '4-8'
+    df.loc[(df['Hour'] >= 8) & (df['Hour'] < 12), 'Block'] = '8-12'
+    df.loc[(df['Hour'] >= 12) & (df['Hour'] < 16), 'Block'] = '12-16'
+    df.loc[(df['Hour'] >= 16) & (df['Hour'] < 20), 'Block'] = '16-20'
+    df.loc[(df['Hour'] >= 20) & (df['Hour'] < 24), 'Block'] = '20-24'
+
+    df['Block'] = pd.Categorical(
+        df['Block'], 
+        categories=['0-4', '4-8', '8-12', '12-16', '16-20', '20-24'], 
+        ordered=True)
+
+    return df
 
 
-def burnt_calories(df, user_id, start_date, end_date):
-    start_date = convert_date(start_date)
-    end_date = convert_date(end_date)
+def get_steps_per_block(connection):
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM hourly_steps')
+    hourly_steps = cursor.fetchall()
 
-    user_data = df[df['Id'] == user_id][['ActivityDate', 'Calories']]
+    df = pd.DataFrame(hourly_steps,
+                      columns = [x[0] for x in cursor.description])
+   
+    df = assign_blocks(df, 'ActivityHour')
+    df = df.groupby('Block', as_index=False).agg(
+        StepTotal=('StepTotal', 'sum'),
+        Count=('StepTotal', 'size')
+    )
+    df['AverageSteps'] = df['StepTotal'] / df['Count']
 
-    # add converted date column
-    user_data['ConvertedDate'] = [convert_date(d) for d in user_data['ActivityDate']]
-
-    # filter for range of dates
-    user_data = user_data[(user_data['ConvertedDate'] >= start_date) & 
-                          (user_data['ConvertedDate'] <= end_date)]
-
-    return user_data
-
-
-def day_of_week(df):
-    dates = df['ActivityDate'].tolist()
-    days = []
-
-    for date in dates:
-        converted_date = convert_date(date)
-        days.append(converted_date.strftime('%A'))
-
-    return days
+    return df
 
 
-def get_workout_per_day(df):
-    weekday = day_of_week(df)
-    df['Weekday'] = weekday 
-    day_frequency = df['Weekday'].value_counts()
-    workout_per_day = day_frequency.to_frame().reset_index()
-    
-    return workout_per_day
+def get_calories_per_block(connection):
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM hourly_calories')
+    hourly_calories = cursor.fetchall()
+    df = pd.DataFrame(hourly_calories,
+                      columns = [x[0] for x in cursor.description])
+   
+    df = assign_blocks(df, 'ActivityHour')
+    df = df.groupby('Block', as_index=False).agg(
+        Calories=('Calories', 'sum'),
+        Count=('Calories', 'size')
+    )
+    df['AverageCalories'] = df['Calories'] / df['Count']
+
+    return df
 
 
-def get_distance_by_activity_level(df):
-    df = df.groupby('Id')[['TotalDistance', 
-                           'VeryActiveDistance', 
-                           'ModeratelyActiveDistance', 
-                           'LightActiveDistance', 
-                           'SedentaryActiveDistance']].sum().sort_values('TotalDistance')
-    df = df.drop(columns='TotalDistance')
+def get_sleep_per_block(connection):
+    cursor = connection.cursor()
+    cursor.execute('SELECT * FROM minute_sleep')
+    minute_sleep = cursor.fetchall()
 
-    return df  
+    df = pd.DataFrame(minute_sleep, columns=[x[0] for x in cursor.description])
+
+    df['Id'] = df['Id'].astype(int).astype(str)
+    df['Day'] = pd.to_datetime(df['date'], format='%m/%d/%Y %I:%M:%S %p').dt.date
+
+    df = assign_blocks(df, 'date')
+
+    df['User_and_Date'] = df['Id'].astype(str) + ' ' + df['Day'].astype(str)
+
+    df = df.groupby('Block', as_index=False).agg(
+        TotalMins=('value', 'count'),
+        SessionsPerBlock=('User_and_Date', 'nunique')
+    )
+    df['AverageSleep'] = df['TotalMins'] / df['SessionsPerBlock']
+
+    return df

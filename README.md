@@ -17,22 +17,22 @@ fitbit-project/
 └── app.py
 ```
 
-## 1. data
+## Data
 
 Two sources of data are used in our analyses: 
 ### `daily_activity.csv`
 Includes information about Fitbit users' daily activity, including but not limited to: steps taken, levels of activity, distance walked.
 ### `fitbit_database.db`
 A database with the following tables:
-    - `daily_activity`: corresponds to `daily_activity.csv`
-    - `heart_rate`: heart rate of users with 5-second frequency
-    - `hourly_calories`: amount of calories burnt each hour
-    - `hourly_intensity`: exercise intensity per hour, given in both total & average amounts
-    - `hourly_steps`: amount of steps taken per hour
-    - `minute_sleep`: per-minute sleep data
-    - `weight_log`: weight, fat, BMI of each user
+* `daily_activity`: corresponds to `daily_activity.csv`
+* `heart_rate`: heart rate of users with 5-second frequency
+* `hourly_calories`: amount of calories burnt each hour
+* `hourly_intensity`: exercise intensity per hour, given in both total & average amounts
+* `hourly_steps`: amount of steps taken per hour
+* `minute_sleep`: per-minute sleep data
+* `weight_log`: weight, fat, BMI of each user
 
-## 2. modules
+## Modules
 
 ### `data.py` 
 Used for accessing relevant parts of the data for later analysis and plotting.
@@ -46,7 +46,7 @@ Includes plotting functions, with dashboarding solutions in mind.
 File for the statistical analysis of fitbit data.
 
 
-## 3. `app.py`
+### Dashboard: `app.py`
 Creates a dashboard using Streamlit. To display the dashboard, run:
 ```bash
 streamlit run app.py

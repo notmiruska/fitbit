@@ -14,16 +14,25 @@ from modules.stats import *
 
 @st.cache_data(show_spinner=False)
 def load_data():
-    users = load_users("data/daily_activity.csv")
+    data = load_and_prepare('data/daily_activity.csv')
+    users = data['Id'].unique()
     
     connection = sqlite3.connect("data/fitbit_database.db")
 
     minute_sleep = load_sleep_data(connection)
     df_heartrate = load_heartrate_data(connection)
 
+    # note: would be nice to clean this up
+    daily_activity = get_total_distance(data)
+    workout_per_day = get_workout_per_day(data)
+    sleep_and_activity = merge_sleep_and_activity_data(connection)
+    steps_blocks = get_steps_per_block(connection)
+    calories_blocks = get_calories_per_block(connection)
+    sleep_blocks = get_sleep_per_block(connection)
+
     connection.close()
 
-    return users, minute_sleep, df_heartrate
+    return data, users, minute_sleep, df_heartrate, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks
 
 
 def select_user(users):
@@ -33,14 +42,51 @@ def select_user(users):
     return selected_user
 
 
-def display_general_statistics(users):
+def display_general_stats(data, users, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks):
     st.title("Fitbit Dashboard")
     st.header("General Statistics")
-    st.markdown("This page displays general insights across users from Fitbit data."
-                "For user-specific statistics,  select a user ID from the sidebar!")
     
-    st.metric("Number of Fitbit Users", len(users))
+    # initialize tabs
+    tabs = st.tabs(['Overview', 'Activity Metrics', 'Sleep Metrics'])
+
+    # Overview
+    with tabs[0]:
+        cols = st.columns(4)
+        cols[0].metric("Number of Users", len(users))
+        cols[1].metric("Average Walked Distance (m)", round(daily_activity['TotalDistance'].mean(), 2))
+
+        cols = st.columns(2)
+        with cols[0]:
+            # slider: display top 5 users by default, can slide up to 35
+            number_of_users_to_show = st.slider(
+                "Select number of users to display",
+                min_value=5,
+                max_value=len(users),
+                value=min(5, len(users))
+            )
+            data_to_show = daily_activity.head(number_of_users_to_show)
+            st.plotly_chart(
+                plot_total_distance(data_to_show), 
+                use_container_width=True)
+            
+            st.plotly_chart(plot_workout_per_day(workout_per_day), use_container_width=True)
+            
+        with cols[1]:
+            st.plotly_chart(plot_regression_steps_calories(data))
+            st.plotly_chart(plot_steps_per_block(steps_blocks))
     
+    # Activity Metrics
+    with tabs[1]:
+        st.plotly_chart(plot_calories_per_block(calories_blocks))
+
+    # Sleep Metrics
+    with tabs[2]:
+        cols = st.columns(2)
+        with cols[0]:
+            st.plotly_chart(plot_regression_sleep_sedentary(sleep_and_activity))
+        with cols[1]:
+            st.plotly_chart(plot_sleep_per_block(sleep_blocks))
+
 
 def display_sleep_tab(df_sleep_person, person_id):
     if df_sleep_person.empty:
@@ -97,7 +143,7 @@ def main():
     # Load data
     # ---------------------
     with st.spinner("Loading Fitbit Dashboard..."):
-        users, minute_sleep, df_heartrate = load_data()
+        data, users, minute_sleep, df_heartrate, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks = load_data()
 
     # ---------------------
     # Sidebar: Select user
@@ -108,7 +154,7 @@ def main():
     # General statistics
     # ---------------------
     if selected_user == "":
-        display_general_statistics(users)
+        display_general_stats(data, users, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks)
 
     # ---------------------
     # User-specific statistics

@@ -39,6 +39,11 @@ def load_daily_activity(connection):
     df_daily_activity["ActivityDate"] = pd.to_datetime(df_daily_activity["ActivityDate"])
     return df_daily_activity
 
+def load_weight_data(connection):
+    df_weight = pd.read_sql_query("SELECT * FROM weight_log;", connection)
+    df_weight["Date"] = pd.to_datetime(df_weight["Date"])
+    return df_weight
+
 def classify_user(df, person_id):
     person_count = len(df[df["Id"] == person_id])
 
@@ -95,13 +100,10 @@ def compute_total_distance(df):
     df = df.groupby('Id', as_index=False)['TotalDistance'].sum()
     df = df.sort_values('TotalDistance', ascending=False)
     df['Id'] = df['Id'].astype(str)
-
     return df
-
 
 def convert_date(date):
     return datetime.strptime(date, '%m/%d/%Y')
-
 
 def burnt_calories(df, user_id, start_date, end_date):
     start_date = convert_date(start_date)
@@ -115,7 +117,7 @@ def burnt_calories(df, user_id, start_date, end_date):
     # filter for range of dates
     user_data = user_data[(user_data['ConvertedDate'] >= start_date) & 
                           (user_data['ConvertedDate'] <= end_date)]
-
+    
     return user_data
 
 
@@ -129,7 +131,6 @@ def day_of_week(df):
 
     return days
 
-
 def get_workout_per_day(df):
     weekday = day_of_week(df)
     df['Weekday'] = weekday 
@@ -137,7 +138,6 @@ def get_workout_per_day(df):
     workout_per_day = day_frequency.to_frame().reset_index()
     
     return workout_per_day
-
 
 def get_distance_by_activity_level(df):
     df = df.groupby('Id')[['TotalDistance', 
@@ -169,9 +169,7 @@ def download_weather_data(API_KEY):
        'windspeed', 'winddir', 'sealevelpressure', 'cloudcover', 'visibility',
        'solarradiation', 'solarenergy', 'uvindex', 'severerisk', 'sunrise',
        'sunset', 'moonphase', 'conditions', 'description', 'icon', 'stations'])
-        print(weather_df.head()) 
-        print(weather_df.columns)
-        weather_df.to_csv("chicago_weather.csv", index=False)
+        weather_df.to_csv("data/chicago_weather.csv", index=False)
         print("Weather data saved to chicago_weather.csv!")
         return weather_df
     except Exception as e:

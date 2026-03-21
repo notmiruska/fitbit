@@ -128,7 +128,10 @@ def plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id
     fig.update_layout(
         title=f"Sleep Sessions Timeline for User {person_id}",
         xaxis_title="Date",
-        yaxis_title="Hours of sleep per session",
+        yaxis=dict(
+            title="Hours of sleep per session",
+            tickformat=".1f",
+        ),
         template="plotly_white",
         xaxis=dict(
             range=[

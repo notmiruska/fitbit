@@ -9,7 +9,7 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 from modules.plots import plot_total_intensity_hourly, plot_sleep_timeline, last_24_hours_plot, plot_stats_heartrate, plot_user_class, plot_activity_vs_weather, barplot_steps_vs_precip
-from modules.data import load_users, load_sleep_data, load_heartrate_data, load_activity_data, process_sleep_sessions, load_daily_activity, classify_user, download_weather_data, merge_weather_and_steps_data
+from modules.data import load_users, load_sleep_data, load_heartrate_data, load_activity_data, process_sleep_sessions, load_daily_activity, classify_user, download_weather_data, merge_weather_and_steps_data, load_weight_data
 from modules.stats import *
 
 #CACHED FUNCTIONS
@@ -38,6 +38,10 @@ def cached_load_activity_data(_connection):
 def cached_load_daily_activity(_connection):
     return load_daily_activity(_connection)
 
+@st.cache_data
+def cached_load_weight_data(_connection):
+    return load_weight_data(_connection)
+
 # MAIN DASHBOARD
 def main():
     st.set_page_config(layout="wide")
@@ -50,6 +54,7 @@ def main():
     df_activity = cached_load_activity_data(connection)
     df_daily_activity = cached_load_daily_activity(connection)
     df_weather = download_weather_data(API_KEY)
+    df_weight = cached_load_weight_data(connection)
 
     # Sidebar: select a user with a placeholder default
     user_options = [""] + list(users)
@@ -64,24 +69,38 @@ def main():
         df_sleep_person = minute_sleep[minute_sleep["Id"] == person_id]
         df_hr_person = df_heartrate[df_heartrate["Id"] == person_id]
         df_activity_person = df_activity[df_activity["Id"] == person_id]
+        df_weight_person = df_weight[df_weight["Id"] == person_id]
 
         #TABS FOR USERS
         tab1, tab2, tab3, tab4 = st.tabs(["General Stats", "Sleep", "Heartrate", "Intensity"])
 
         #General TAB
         with tab1:
+            if not df_weight_person["WeightPounds"].empty:
+            
+                latest = df_weight_person.sort_values("Date").iloc[-1]
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Weight (lbs)", f"{latest['WeightPounds']:.1f}")
+                with col2:
+                    st.metric("BMI", f"{latest['BMI']:.1f}")
+                st.caption(f"Measured on: {latest['Date'].strftime('%Y-%m-%d')}")
+                st.divider()
+        
             n_activities, user_class = classify_user(df_daily_activity, person_id)
             fig_activity = plot_user_class(n_activities, user_class)
             st.plotly_chart(fig_activity, use_container_width=True)
 
-            df_merged = merge_weather_and_steps_data(df_weather, df_daily_activity, person_id)
-            cols = st.columns(2)
-            with cols[0]:
-                fig_steps_temp = plot_activity_vs_weather(df_merged, person_id)
-                st.plotly_chart(fig_steps_temp, use_container_width=True)
-            with cols[1]:
-                fig_steps_precip = barplot_steps_vs_precip(df_merged, person_id)
-                st.plotly_chart(fig_steps_precip, use_container_width=True)
+            if not df_weather is None:
+                df_merged = merge_weather_and_steps_data(df_weather, df_daily_activity, person_id)
+                cols = st.columns(2)
+                with cols[0]:
+                    fig_steps_temp = plot_activity_vs_weather(df_merged, person_id)
+                    st.plotly_chart(fig_steps_temp, use_container_width=True)
+                with cols[1]:
+                    fig_steps_precip = barplot_steps_vs_precip(df_merged, person_id)
+                    st.plotly_chart(fig_steps_precip, use_container_width=True)
     
 
         # SLEEP TAB
@@ -90,27 +109,20 @@ def main():
             if df_sleep_person.empty:
                 st.warning("No sleep data available.")
             else:
-                main_sleep, naps, sleep_hours_line, merged_df = process_sleep_sessions(
-                    df_sleep_person, nap_threshold=3
-                    )
+                main_sleep, naps, sleep_hours_line, merged_df = process_sleep_sessions(df_sleep_person, nap_threshold=3)
 
                 col1, = st.columns(1)
-
 
                 with col1:
                     avg_hr = round(sleep_hours_line.mean(), 1)
                     st.metric("Mean sleep hours per night", f"{avg_hr} hours")
-
-
 
                 st.divider()
 
                 col1, col2 = st.columns(2)
                 with col1:
 
-                    fig_sleep = plot_sleep_timeline(
-                    main_sleep, naps, sleep_hours_line, merged_df, person_id
-                    )
+                    fig_sleep = plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id)
                     st.plotly_chart(fig_sleep, use_container_width=True)
 
         # HEARTRATE TAB

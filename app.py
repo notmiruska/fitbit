@@ -17,12 +17,8 @@ from modules.stats import *
 @st.cache_data(show_spinner=False)
 def load_data():
     data = load_and_prepare('data/daily_activity.csv')
-    users = data['Id'].unique()
     
     connection = sqlite3.connect("data/fitbit_database.db")
-
-    minute_sleep = load_sleep_data(connection)
-    df_heartrate = load_heartrate_data(connection)
 
     # note: would be nice to clean this up
     daily_activity = get_total_distance(data)
@@ -34,7 +30,7 @@ def load_data():
 
     connection.close()
 
-    return data, users, minute_sleep, df_heartrate, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks
+    return data, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks
 
 
 @st.cache_resource
@@ -116,7 +112,7 @@ def display_general_stats(data, users, daily_activity, workout_per_day, sleep_an
 def main():
     st.set_page_config(layout="wide")
         # Load data
-    API_KEY = "6UWULDKFGEFMZXP7VMJDECQ7P"
+    API_KEY = "FX2TTAYYJZ4YSXPEWUHS536LQ"
     connection = get_connection("data/fitbit_database.db")
     users = cached_load_users("data/daily_activity.csv")
     minute_sleep = cached_load_sleep_data(connection)
@@ -125,6 +121,7 @@ def main():
     df_daily_activity = cached_load_daily_activity(connection)
     df_weather = download_weather_data(API_KEY)
     df_weight = cached_load_weight_data(connection)
+    data, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks = load_data()
 
 
     # Sidebar: select a user with a placeholder default

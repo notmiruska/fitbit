@@ -46,7 +46,7 @@ Includes plotting functions, with dashboarding solutions in mind.
 File for the statistical analysis of fitbit data.
 
 
-### Dashboard: `app.py`
+## Dashboard: `app.py`
 Creates a dashboard using Streamlit. To display the dashboard, run:
 ```bash
 streamlit run app.py

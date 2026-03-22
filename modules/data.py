@@ -56,6 +56,11 @@ def load_weight_data(connection):
     df_weight["Date"] = pd.to_datetime(df_weight["Date"])
     return df_weight
 
+def load_calories_data(connection):
+    df_calories = pd.read_sql_query('SELECT * FROM hourly_calories;', connection)
+    df_calories['ActivityHour'] = pd.to_datetime(df_calories['ActivityHour'])
+    return df_calories
+
 def classify_user(df, person_id):
     person_count = len(df[df["Id"] == person_id])
 

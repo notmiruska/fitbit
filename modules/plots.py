@@ -11,36 +11,22 @@ from data import *
 
 
 
-def plot_calories_for_user(df, user_id, start_date=None, end_date=None):
-    
-    # Convert to datetime
-    df['ActivityDate'] = pd.to_datetime(df['ActivityDate'])
-    
-    # Filter by user
-    user_data = df[df['Id'] == user_id]
-    
-    # Filter by date range (if provided)
-    if start_date:
-        start_date = pd.to_datetime(start_date)
-        user_data = user_data[user_data['ActivityDate'] >= start_date]
-        
-    if end_date:
-        end_date = pd.to_datetime(end_date)
-        user_data = user_data[user_data['ActivityDate'] <= end_date]
-    
+def plot_calories_for_user(df):
     # Sort by date
-    user_data = user_data.sort_values('ActivityDate')
+    df = df.sort_values(by='ActivityHour')
     
     # Plot
-    plt.figure()
-    plt.plot(user_data['ActivityDate'], user_data['Calories'])
-    
-    plt.xlabel("Date")
-    plt.ylabel("Calories Burnt")
-    plt.title(f"Calories Burnt Over Time (User {user_id})")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
+    fig = px.line(
+        df,
+        x='ActivityHour',
+        y='Calories',
+        title='Calories Burnt Over Time',
+        labels={'ActivityHour': 'Time', 'Calories': 'Calories Burnt'}
+    )
+
+    fig.update_traces(line=dict(color='plum'))
+
+    return fig
 
 
 def plot_regression_for_user(df, model, user_id):
@@ -231,7 +217,6 @@ def plot_regression_steps_calories(df):
         x='TotalSteps',
         y='Calories',
         trendline='ols',
-        color='Id',
         title='Relationship Between Amount of Steps Taken and Calories Burnt'
     )
 

@@ -1,5 +1,4 @@
 import pandas as pd
-import os
 import matplotlib.pyplot as plt
 import statsmodels.formula.api as smf
 import numpy as np

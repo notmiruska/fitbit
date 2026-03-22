@@ -1,7 +1,5 @@
 import pandas as pd
 import numpy as np
-import requests
-import urllib.parse
 
 
 def read_csv(path):

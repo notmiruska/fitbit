@@ -6,7 +6,6 @@ import plotly.express as px
 import numpy as np
 import seaborn as sns
 import plotly.express as px
-import math
 from data import *
 
 

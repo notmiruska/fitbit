@@ -262,12 +262,19 @@ def get_steps_per_block(connection):
     df = pd.DataFrame(hourly_steps,
                       columns = [x[0] for x in cursor.description])
    
+    df['ActivityHour'] = pd.to_datetime(df['ActivityHour'])
+    
+    days = df['ActivityHour'].dt.date.nunique()
+    users = df['Id'].nunique()
+
+
     df = assign_blocks(df, 'ActivityHour')
+    
     df = df.groupby('Block', as_index=False).agg(
-        StepTotal=('StepTotal', 'sum'),
-        Count=('StepTotal', 'size')
+        StepTotal=('StepTotal', 'sum')
     )
-    df['AverageSteps'] = df['StepTotal'] / df['Count']
+    
+    df['AverageSteps'] = df['StepTotal'] / (days * users)
 
     return df
 

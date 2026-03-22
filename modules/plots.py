@@ -24,7 +24,7 @@ def plot_calories_for_user(df):
         labels={'ActivityHour': 'Time', 'Calories': 'Calories Burnt'}
     )
 
-    fig.update_traces(line=dict(color='plum'))
+    fig.update_traces(line=dict(color='#242a7a'))
 
     return fig
 
@@ -185,6 +185,8 @@ def plot_total_distance(df):
         orientation='h',
         height=dynamic_height,
         title='Top Users Based on Total Distance Walked', 
+        color_discrete_sequence=['#4b70b5'],
+        text_auto='.1f'
     )
 
     fig.update_layout(
@@ -205,7 +207,9 @@ def plot_workout_per_day(df):
         df,
         x='Weekday',
         y='count',
-        title='Workout Frequency per Day'
+        title='Workout Frequency per Day',
+        color_discrete_sequence=["#68a8df"],
+        text_auto='.0f'
     )
 
     return fig
@@ -218,6 +222,16 @@ def plot_regression_steps_calories(df):
         y='Calories',
         trendline='ols',
         title='Amount of Steps Taken and Calories Burnt'
+    )
+
+    fig.update_traces(
+        marker=dict(color='#68a8df', opacity=0.6),
+        selector=dict(mode='markers')
+    )
+
+    fig.update_traces(
+        line=dict(color='#130f4b', width=3.5),
+        selector=dict(mode='lines')
     )
 
     return fig
@@ -243,6 +257,15 @@ def plot_regression_sleep_sedentary(df):
         trendline='ols',
         title='Relationship Between Sleep Duration and Sedentary Minutes'
     )
+    fig.update_traces(
+        marker=dict(color='#68a8df', opacity=0.6),
+        selector=dict(mode='markers')
+    )
+
+    fig.update_traces(
+        line=dict(color='#130f4b', width=3.5),
+        selector=dict(mode='lines')
+    )
 
     return fig
 
@@ -252,7 +275,9 @@ def plot_steps_per_block(df):
         df,
         x='Block',
         y='AverageSteps',
-        title='Average Steps Taken Per Time Block'
+        title='Average Steps Taken Per Time Block',
+        color_discrete_sequence=['#130f4b'],
+        text_auto='.0f'
     )
 
     return fig
@@ -263,7 +288,9 @@ def plot_calories_per_block(df):
         df,
         x='Block',
         y='AverageCalories',
-        title='Average Calories Burnt Per Time Block'
+        title='Average Calories Burnt Per Time Block',
+        color_discrete_sequence=['#4b70b5'],
+        text_auto='.1f'
     )
     
     return fig
@@ -274,7 +301,9 @@ def plot_sleep_per_block(df):
         df,
         x='Block',
         y='AverageSleep',
-        title='Average Sleep Duration Per Time Block'
+        title='Average Sleep Duration Per Time Block (Minutes)',
+        color_discrete_sequence=['#4b70b5'],
+        text_auto='.1f'
     )
 
     return fig
@@ -407,14 +436,23 @@ def barplot_steps_vs_precip(df_merged, user_id):
 def active_minutes_piechart(df):
     activity_level_averages = df[['VeryActiveMinutes', 'FairlyActiveMinutes', 'LightlyActiveMinutes', 'SedentaryMinutes']].mean()
     
+    colors = {
+        'VeryActiveMinutes': '#4b70b5',
+        'FairlyActiveMinutes': '#ffffff',
+        'LightlyActiveMinutes': '#68a8df',
+        'SedentaryMinutes': '#130f4b'
+    }
+
     fig = px.pie(
         values=activity_level_averages,
         names=activity_level_averages.index,
-        hole=0.5,
-        title='Level of Daily Activity'
+        hole=0.3,
+        title='Level of Daily Activity',
+        color=activity_level_averages.index,
+        color_discrete_map=colors
     )
 
-    fig.update_traces(textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=2)))
+    fig.update_traces(textinfo='percent+label')
     fig.update_layout(showlegend=False)
 
     return fig

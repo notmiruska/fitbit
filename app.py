@@ -69,13 +69,13 @@ def display_general_stats(data, users, df_daily_activity, daily_activity, workou
     st.header("General Statistics")
     
     # initialize tabs
-    tabs = st.tabs(['Overview', 'Activity Metrics', 'Sleep Metrics'])
+    tabs = st.tabs(['Overview', 'Activity', 'Sleep'])
 
     # Overview
     with tabs[0]:
         cols = st.columns(4)
         cols[0].metric("Number of Users", len(users))
-        cols[1].metric("Average Distance per Day", round(daily_activity['TotalDistance'].mean(), 2))
+        cols[1].metric("Average Distance Walked", round(daily_activity['TotalDistance'].mean(), 2))
         cols[2].metric("Average Steps per Day", int(np.floor(df_daily_activity['TotalSteps'].mean())))
 
         cols = st.columns(2)

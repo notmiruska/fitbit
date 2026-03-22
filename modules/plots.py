@@ -2,72 +2,32 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import statsmodels.formula.api as smf
 import plotly.graph_objects as go
+import plotly.express as px
 import numpy as np
 import seaborn as sns
-from modules.data import *
+import plotly.express as px
+import math
+from data import *
 
-def plot_total_distance(df):
-    total_distance_per_user = df.groupby('Id')['TotalDistance'].sum()
 
-    total_distance_per_user.plot(kind='bar')
 
-    plt.xlabel("User ID")
-    plt.ylabel("Total Distance")
-    plt.title("Total Distance per User")
-
-    plt.show()
-
-def plot_calories_for_user(df, user_id, start_date=None, end_date=None):
-    
-    # Convert to datetime
-    df['ActivityDate'] = pd.to_datetime(df['ActivityDate'])
-    
-    # Filter by user
-    user_data = df[df['Id'] == user_id]
-    
-    # Filter by date range (if provided)
-    if start_date:
-        start_date = pd.to_datetime(start_date)
-        user_data = user_data[user_data['ActivityDate'] >= start_date]
-        
-    if end_date:
-        end_date = pd.to_datetime(end_date)
-        user_data = user_data[user_data['ActivityDate'] <= end_date]
-    
+def plot_calories_for_user(df):
     # Sort by date
-    user_data = user_data.sort_values('ActivityDate')
+    df = df.sort_values(by='ActivityHour')
     
     # Plot
-    plt.figure()
-    plt.plot(user_data['ActivityDate'], user_data['Calories'])
-    
-    plt.xlabel("Date")
-    plt.ylabel("Calories Burnt")
-    plt.title(f"Calories Burnt Over Time (User {user_id})")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
+    fig = px.line(
+        df,
+        x='ActivityHour',
+        y='Calories',
+        title='Calories Burnt Over Time',
+        labels={'ActivityHour': 'Time', 'Calories': 'Calories Burnt'}
+    )
 
-def plot_workout_frequency_by_weekday(df):
-    
-    df['ActivityDate'] = pd.to_datetime(df['ActivityDate'])
-    df['Weekday'] = df['ActivityDate'].dt.day_name()
-    workout_counts = df['Weekday'].value_counts()
-    
-    ordered_days = ["Monday", "Tuesday", "Wednesday", 
-                    "Thursday", "Friday", "Saturday", "Sunday"]
-    
-    workout_counts = workout_counts.reindex(ordered_days)
-    
-    plt.figure()
-    workout_counts.plot(kind='bar')
-    
-    plt.xlabel("Day of the Week")
-    plt.ylabel("Workout Frequency")
-    plt.title("Workout Frequency per Weekday (All Users)")
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
+    fig.update_traces(line=dict(color='#242a7a'))
+
+    return fig
+
 
 def plot_regression_for_user(df, model, user_id):
     
@@ -109,7 +69,7 @@ def plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id
         y=sleep_hours_line,
         mode='lines+markers',
         name='Main sleep (>=3h)',
-        line=dict(color='orange', width=3),
+        line=dict(color="#242a7a", width=3),
         marker=dict(size=8)
     ))
 
@@ -119,13 +79,16 @@ def plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id
         y=naps['SleepHours'],
         mode='markers',
         name='Nap (<3h)',
-        marker=dict(color='red', size=12, symbol='star')
+        marker=dict(color="#5981e4", size=12, symbol='circle')
     ))
 
     fig.update_layout(
         title=f"Sleep Sessions Timeline for User {person_id}",
         xaxis_title="Date",
-        yaxis_title="Hours of sleep per session",
+        yaxis=dict(
+            title="Hours of sleep per session",
+            tickformat=".1f",
+        ),
         template="plotly_white",
         xaxis=dict(
             range=[
@@ -184,21 +147,27 @@ def plot_stats_heartrate(df, id):
         x=daily_stats['Date'],
         y=daily_stats['mean'],
         mode='lines+markers',
-        name='Mean'
+        name='Mean',
+        line=dict(color='#68a8df'),
+        marker=dict(color='#68a8df')
     ))
 
     fig.add_trace(go.Scatter(
         x=daily_stats['Date'],
         y=daily_stats['max'],
         mode='lines+markers',
-        name='Max'
+        name='Max',
+        line=dict(color='#130f4b'),
+        marker=dict(color='#130f4b')
     ))
 
     fig.add_trace(go.Scatter(
         x=daily_stats['Date'],
         y=daily_stats['min'],
         mode='lines+markers',
-        name='Min'
+        name='Min',
+        line=dict(color='#4b70b5'),
+        marker=dict(color='#4b70b5')
     ))
 
     fig.update_layout(
@@ -210,63 +179,288 @@ def plot_stats_heartrate(df, id):
 
     return fig
 
+
 def plot_total_distance(df):
-    sns.barplot(df, x='TotalDistance', y='Id', orient='h', color='tab:blue')
-    plt.title('Total Distance Per User')
-    plt.xlabel('Total Distance')
-    plt.ylabel('User ID')
-    plt.yticks(fontsize=7)
-    plt.grid(axis='x')
-    plt.tight_layout()
+    '''input: output of get_total_distance()'''
+
+    dynamic_height = max(400, len(df) * 25)
+    fig = px.bar(
+        df,
+        x='TotalDistance',
+        y='Id',
+        orientation='h',
+        height=dynamic_height,
+        title='Top Users Based on Total Distance Walked', 
+        color_discrete_sequence=['#4b70b5'],
+        text_auto='.1f'
+    )
+
+    fig.update_layout(
+        yaxis_title='User ID',
+        xaxis_title='Total Distance',
+        yaxis={'type': 'category'},
+    )
+
+    fig.update_yaxes(categoryorder='total ascending')
     
-    plt.show()
-
-
-def plot_burnt_calories(df, user_id, start_date, end_date):
-    user_data = burnt_calories(df, user_id, start_date, end_date)
-
-    plt.plot(user_data['ConvertedDate'], user_data['Calories'])
-    plt.title(f'Calories burnt by user {user_id} per day')
-    plt.xlabel('Date')
-    plt.ylabel('Burnt calories')
-    plt.xticks(fontsize=7, rotation=30)
-    plt.tight_layout()
-
-    plt.show()
+    return fig
 
 
 def plot_workout_per_day(df):
-    sns.barplot(df, x='Weekday', y='count', color='tab:blue', 
-                order=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
-    plt.title('Workout frequency per day')
-    plt.xlabel('Day')
-    plt.ylabel('Frequency')
-    plt.show()
+    '''input: output of workout_per_day()'''
+
+    fig = px.bar(
+        df,
+        x='Weekday',
+        y='count',
+        title='Workout Frequency per Day',
+        color_discrete_sequence=["#68a8df"],
+        text_auto='.0f'
+    )
+
+    return fig
 
 
-def plot_calories(df, user_id):
-    # note: check this for correctness
-    user_data = df[df['Id'] == user_id]
+def plot_regression_steps_calories(df):
+    fig = px.scatter(
+        df,
+        x='TotalSteps',
+        y='Calories',
+        trendline='ols',
+        title='Amount of Steps Taken and Calories Burnt'
+    )
+
+    fig.update_traces(
+        marker=dict(color='#68a8df', opacity=0.6),
+        selector=dict(mode='markers')
+    )
+
+    fig.update_traces(
+        line=dict(color='#130f4b', width=3.5),
+        selector=dict(mode='lines')
+    )
+
+    return fig
+
+
+def plot_regression_sleep_activity(df):
+    fig = px.scatter(
+        df,
+        x='SleepDuration',
+        y='TotalActiveMinutes',
+        trendline='ols',
+        title='Relationship Between Sleep Duration and Total Active Minutes'
+    )
+
+    return fig
+
+
+def plot_regression_sleep_sedentary(df):
+    fig = px.scatter(
+        df,
+        x='SleepDuration',
+        y='SedentaryMinutes',
+        trendline='ols',
+        title='Relationship Between Sleep Duration and Sedentary Minutes'
+    )
+    fig.update_traces(
+        marker=dict(color='#68a8df', opacity=0.6),
+        selector=dict(mode='markers')
+    )
+
+    fig.update_traces(
+        line=dict(color='#130f4b', width=3.5),
+        selector=dict(mode='lines')
+    )
+
+    return fig
+
+
+def plot_steps_per_block(df):
+    fig = px.bar(
+        df,
+        x='Block',
+        y='AverageSteps',
+        title='Average Steps Taken Per Time Block',
+        color_discrete_sequence=['#130f4b'],
+        text_auto='.0f'
+    )
+
+    return fig
+
+
+def plot_calories_per_block(df):
+    fig = px.bar(
+        df,
+        x='Block',
+        y='AverageCalories',
+        title='Average Calories Burnt Per Time Block',
+        color_discrete_sequence=['#4b70b5'],
+        text_auto='.1f'
+    )
     
-    sns.regplot(data=user_data,
-                x = 'TotalSteps',
-                y='Calories',
-                scatter_kws={'alpha':0.5},
-                line_kws={'color':'tab:pink'})
-    plt.title(f'Relationship between calories and steps taken for user {user_id}')
-    plt.xlabel('Total Amount of Steps')
-    plt.ylabel('Burnt Calories')
-    plt.show()
+    return fig
 
 
-def plot_distance_by_activity_level(df):
-    df.plot.barh(stacked=True, color=['tab:pink', 'tab:olive', 'tab:cyan', 'tab:gray'])
-    plt.title('Total Distance Per User Grouped by Activity Level')
-    plt.xlabel('Distance')
-    plt.ylabel('User ID')
-    plt.yticks(fontsize=7)
-    plt.legend(['Very Active', 'Moderately Active', 'Light Active', 'Sedentary Active'])
-    plt.grid(axis='x')
-    plt.tight_layout()
-    plt.show() 
+def plot_sleep_per_block(df):
+    fig = px.bar(
+        df,
+        x='Block',
+        y='AverageSleep',
+        title='Average Sleep Duration Per Time Block (Minutes)',
+        color_discrete_sequence=['#4b70b5'],
+        text_auto='.1f'
+    )
+
+    return fig
+
+
+def plot_total_intensity_hourly(df, user_id):
+    
+    # Sort by time (important for line plots)
+    df = df.sort_values(by='ActivityHour')
+
+    # Plot ALL datapoints
+    fig = px.line(
+        df,
+        x='ActivityHour',
+        y='TotalIntensity',
+        title=f'Total Intensity Over Time (User {user_id})',
+        labels={
+            'ActivityHour': 'Time',
+            'TotalIntensity': 'Total Intensity'
+        }
+    )
+    
+    return fig
+
+def plot_user_class(n_activities, user_class):
+
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=n_activities,
+        number={
+            'suffix': " activities",
+            'font': {'size': 28}
+        },
+        domain={'x': [0, 1], 'y': [0, 1]},
+        title={
+            'text': "User class based on number of activities",
+            'font': {'size': 28}
+        },
+        
+        gauge={
+            'axis': {'range': [0, 32]},
+            'bar': {'color': "white"},
+            'steps': [
+                {'range': [0, 10], 'color': "#68a8df"},
+                {'range': [10, 15], 'color': "#4968b0"},
+                {'range': [15, 32], 'color': "#343cac"}
+            ],
+        }
+    ))
+
+    fig.add_annotation(
+        x=0.5,
+        y=0.25,
+        text=user_class,
+        showarrow=False,
+        font=dict(size=36)
+    )
+    return fig
+
+def plot_activity_vs_weather(df_merged, user_id):
+    
+    fig = go.Figure()
+
+    # Left axis (Steps)
+    fig.add_trace(go.Bar(
+        x=df_merged['ActivityDate'],
+        y=df_merged['TotalSteps'],  
+        name='Steps',
+        yaxis='y1',
+        marker_color= "#4b70b5",
+        opacity=0.7
+    ))
+    
+    # Right axis (Temp)
+    fig.add_trace(go.Scatter(
+        x=df_merged['ActivityDate'],
+        y=df_merged['temp'],
+        name='Avg Temp',
+        yaxis='y2',
+        mode='lines+markers',
+        line=dict(color="#130f4b", width=2)
+    ))
+    
+
+    fig.update_layout(
+        title=f"Total steps vs Average temperature for User {user_id}",
+        xaxis=dict(title='Date'),
+        yaxis=dict(
+            title='Steps',
+            side='left',
+            showgrid=False
+        ),
+        yaxis2=dict(
+            title='Average Temperature (°F)',
+            overlaying='y',
+            side='right',
+            showgrid=False
+        ),
+        legend=dict(x=0.1, y=1.1, orientation='h'),
+        template='plotly_white'
+    )
+    return fig
+
+def barplot_steps_vs_precip(df_merged, user_id):
+
+    df_merged['Had_Precip'] = df_merged['precip'].apply(lambda x: 'Yes' if x > 0 else 'No')
+    df_merged['Had_Precip'] = pd.Categorical(df_merged['Had_Precip'], categories=['Yes', 'No'], ordered=True)
+    avg_steps = df_merged.groupby('Had_Precip')['TotalSteps'].mean().reset_index()
+    avg_steps['TotalSteps'] = np.floor(avg_steps['TotalSteps'])
+
+    fig = px.bar(
+        avg_steps,
+        x='Had_Precip',
+        y='TotalSteps',
+        color='Had_Precip',
+        color_discrete_map={'Yes':"#4968b0",'No':"#4968b0"},
+        text='TotalSteps',
+        title=f"Average Steps on days with or withour precipitation for User {user_id}"
+    )
+    
+    fig.update_layout(
+        yaxis_title="Average Total Steps",
+        xaxis_title="Precipitation (Yes/No)",
+        showlegend=False,
+        template="plotly_white",
+    )
+    return fig
+
+
+def active_minutes_piechart(df):
+    activity_level_averages = df[['VeryActiveMinutes', 'FairlyActiveMinutes', 'LightlyActiveMinutes', 'SedentaryMinutes']].mean()
+    
+    colors = {
+        'VeryActiveMinutes': '#4b70b5',
+        'FairlyActiveMinutes': '#ffffff',
+        'LightlyActiveMinutes': '#68a8df',
+        'SedentaryMinutes': '#130f4b'
+    }
+
+    fig = px.pie(
+        values=activity_level_averages,
+        names=activity_level_averages.index,
+        hole=0.3,
+        title='Level of Daily Activity',
+        color=activity_level_averages.index,
+        color_discrete_map=colors
+    )
+
+    fig.update_traces(textinfo='percent+label')
+    fig.update_layout(showlegend=False)
+
+    return fig
+
 

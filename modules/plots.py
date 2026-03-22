@@ -69,7 +69,7 @@ def plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id
         y=sleep_hours_line,
         mode='lines+markers',
         name='Main sleep (>=3h)',
-        line=dict(color='orange', width=3),
+        line=dict(color="#242a7a", width=3),
         marker=dict(size=8)
     ))
 
@@ -79,7 +79,7 @@ def plot_sleep_timeline(main_sleep, naps, sleep_hours_line, merged_df, person_id
         y=naps['SleepHours'],
         mode='markers',
         name='Nap (<3h)',
-        marker=dict(color='red', size=12, symbol='star')
+        marker=dict(color="#5981e4", size=12, symbol='circle')
     ))
 
     fig.update_layout(
@@ -304,17 +304,23 @@ def plot_user_class(n_activities, user_class):
     fig = go.Figure(go.Indicator(
         mode="gauge+number",
         value=n_activities,
-        number={'suffix': " activities"},
+        number={
+            'suffix': " activities",
+            'font': {'size': 28}
+        },
         domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': "User Activity"},
+        title={
+            'text': "User class based on number of activities",
+            'font': {'size': 28}
+        },
         
         gauge={
             'axis': {'range': [0, 32]},
             'bar': {'color': "white"},
             'steps': [
-                {'range': [0, 10], 'color': "#2a9d8f"},
-                {'range': [10, 15], 'color': "#e9c46a"},
-                {'range': [15, 32], 'color': "#e76f51"}
+                {'range': [0, 10], 'color': "#68a8df"},
+                {'range': [10, 15], 'color': "#4968b0"},
+                {'range': [15, 32], 'color': "#343cac"}
             ],
         }
     ))
@@ -324,9 +330,8 @@ def plot_user_class(n_activities, user_class):
         y=0.25,
         text=user_class,
         showarrow=False,
-        font=dict(size=20)
+        font=dict(size=36)
     )
-
     return fig
 
 def plot_activity_vs_weather(df_merged, user_id):
@@ -339,7 +344,7 @@ def plot_activity_vs_weather(df_merged, user_id):
         y=df_merged['TotalSteps'],  
         name='Steps',
         yaxis='y1',
-        marker_color= "#2a9d8f",
+        marker_color= "#4b70b5",
         opacity=0.7
     ))
     
@@ -350,7 +355,7 @@ def plot_activity_vs_weather(df_merged, user_id):
         name='Avg Temp',
         yaxis='y2',
         mode='lines+markers',
-        line=dict(color="#e76f51", width=2)
+        line=dict(color="#130f4b", width=2)
     ))
     
 
@@ -376,6 +381,7 @@ def plot_activity_vs_weather(df_merged, user_id):
 def barplot_steps_vs_precip(df_merged, user_id):
 
     df_merged['Had_Precip'] = df_merged['precip'].apply(lambda x: 'Yes' if x > 0 else 'No')
+    df_merged['Had_Precip'] = pd.Categorical(df_merged['Had_Precip'], categories=['Yes', 'No'], ordered=True)
     avg_steps = df_merged.groupby('Had_Precip')['TotalSteps'].mean().reset_index()
     avg_steps['TotalSteps'] = np.floor(avg_steps['TotalSteps'])
 
@@ -384,7 +390,7 @@ def barplot_steps_vs_precip(df_merged, user_id):
         x='Had_Precip',
         y='TotalSteps',
         color='Had_Precip',
-        color_discrete_map={'Yes':"#e9c46a",'No':"#e9c46a"},
+        color_discrete_map={'Yes':"#4968b0",'No':"#4968b0"},
         text='TotalSteps',
         title=f"Average Steps on days with or withour precipitation for User {user_id}"
     )
@@ -393,7 +399,7 @@ def barplot_steps_vs_precip(df_merged, user_id):
         yaxis_title="Average Total Steps",
         xaxis_title="Precipitation (Yes/No)",
         showlegend=False,
-        template="plotly_white"
+        template="plotly_white",
     )
     return fig
 

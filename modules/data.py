@@ -224,7 +224,6 @@ def download_weather_data(API_KEY):
        'solarradiation', 'solarenergy', 'uvindex', 'severerisk', 'sunrise',
        'sunset', 'moonphase', 'conditions', 'description', 'icon', 'stations'])
         weather_df.to_csv("data/chicago_weather.csv", index=False)
-        print("Weather data saved to chicago_weather.csv!")
         return weather_df
     except Exception as e:
         print(f"Failed to download weather data: {e}")

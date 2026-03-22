@@ -175,7 +175,8 @@ def get_activity_data(connection):
         Id,
         ActivityDate,
         (VeryActiveMinutes + FairlyActiveMinutes + LightlyActiveMinutes) as TotalActiveMinutes,
-        SedentaryMinutes
+        SedentaryMinutes,
+        Calories
     FROM daily_activity
     GROUP BY Id, ActivityDate
     '''
@@ -188,6 +189,25 @@ def get_activity_data(connection):
     
     return df
 
+def classify_calories(cal):
+    if cal <= 1800:
+        return 'low (<1800 kcal)'
+    elif 1800 < cal < 2500:
+        return 'medium (1800-2500 kcal)'
+    else:
+        return 'high (>2500 kcal)'
+
+def group_data(person_sleep_activity):
+    avg_sleep_by_class = (person_sleep_activity.groupby('CaloriesClass')['SleepDuration'].mean().reset_index())
+    avg_sleep_by_class.rename(columns={'SleepDuration': 'AvgSleepDuration'}, inplace=True)
+    avg_sleep_by_class['AvgSleepDuration'] = (avg_sleep_by_class['AvgSleepDuration'] / 60).round(1)
+    avg_sleep_by_class['AvgSleepDuration'] = avg_sleep_by_class['AvgSleepDuration'].astype(str) + 'h'
+
+    avg_sleep_by_class.rename(columns={
+        'CaloriesClass': 'Calories Class',
+        'AvgSleepDuration': 'Average Sleep Duration'
+        }, inplace=True)
+    return avg_sleep_by_class
 
 def merge_sleep_and_activity_data(connection):
     '''use for regression_sleep_activity()'''

@@ -31,6 +31,8 @@ A database with the following tables:
 * `hourly_steps`: amount of steps taken per hour
 * `minute_sleep`: per-minute sleep data
 * `weight_log`: weight, fat, BMI of each user
+### `chicago_weather.csv`
+* Weather data for dates corresponding to activity data, including temperature and precipitation. 
 
 ## Modules
 

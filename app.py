@@ -61,6 +61,10 @@ def cached_load_daily_activity(_connection):
 def cached_load_weight_data(_connection):
     return load_weight_data(_connection)
 
+@st.cache_data
+def cached_load_calories_data(_connection):
+    return load_calories_data(_connection)
+
 
 def display_general_stats(data, users, df_daily_activity, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks):
     st.title("Fitbit Dashboard")
@@ -130,6 +134,7 @@ def main():
     df_daily_activity = cached_load_daily_activity(connection)
     df_weather = pd.read_csv("data/chicago_weather.csv")
     df_weight = cached_load_weight_data(connection)
+    df_calories = cached_load_calories_data(connection)
     data, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks = load_data()
     sleep_and_activity['CaloriesClass'] = sleep_and_activity['Calories'].apply(classify_calories)
 
@@ -151,6 +156,7 @@ def main():
         df_hr_person = df_heartrate[df_heartrate["Id"] == person_id]
         df_activity_person = df_activity[df_activity["Id"] == person_id]
         df_weight_person = df_weight[df_weight["Id"] == person_id]
+        df_calories_person = df_calories[df_calories['Id'] == person_id]
 
         #TABS FOR USERS
         tab1, tab2, tab3, tab4 = st.tabs(["General Stats", "Sleep", "Heartrate", "Intensity"])
@@ -229,6 +235,7 @@ def main():
 
         # HEARTRATE TAB
         with tab3:
+            person_id = int(person_id)
 
             col1, col2 = st.columns(2)
 
@@ -282,16 +289,19 @@ def main():
                     )
                     # Filter data for that day
                     df_to_plot = df_activity_person[df_activity_person["ActivityHour"].dt.date == selected_date]
+                    df_calories_to_plot = df_calories_person[df_calories_person['ActivityHour'].dt.date == selected_date]
 
                     if df_to_plot.empty:
                         st.warning("No activity data for this day.")
                     else:
                         fig = plot_total_intensity_hourly(df_to_plot, person_id)
                         st.plotly_chart(fig, use_container_width=True)
+                        st.plotly_chart(plot_calories_for_user(df_calories_to_plot), use_container_width=True)
                 else:
                     # Show all days by default
                     fig = plot_total_intensity_hourly(df_activity_person, person_id)
                     st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(plot_calories_for_user(df_calories_person))
 
     
 if __name__ == "__main__":

@@ -147,21 +147,27 @@ def plot_stats_heartrate(df, id):
         x=daily_stats['Date'],
         y=daily_stats['mean'],
         mode='lines+markers',
-        name='Mean'
+        name='Mean',
+        line=dict(color='#68a8df'),
+        marker=dict(color='#68a8df')
     ))
 
     fig.add_trace(go.Scatter(
         x=daily_stats['Date'],
         y=daily_stats['max'],
         mode='lines+markers',
-        name='Max'
+        name='Max',
+        line=dict(color='#130f4b'),
+        marker=dict(color='#130f4b')
     ))
 
     fig.add_trace(go.Scatter(
         x=daily_stats['Date'],
         y=daily_stats['min'],
         mode='lines+markers',
-        name='Min'
+        name='Min',
+        line=dict(color='#4b70b5'),
+        marker=dict(color='#4b70b5')
     ))
 
     fig.update_layout(

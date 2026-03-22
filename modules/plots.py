@@ -184,7 +184,7 @@ def plot_total_distance(df):
         y='Id',
         orientation='h',
         height=dynamic_height,
-        title='Total Distance Per User', 
+        title='Top Users Based on Total Distance Walked', 
     )
 
     fig.update_layout(
@@ -217,7 +217,7 @@ def plot_regression_steps_calories(df):
         x='TotalSteps',
         y='Calories',
         trendline='ols',
-        title='Relationship Between Amount of Steps Taken and Calories Burnt'
+        title='Amount of Steps Taken and Calories Burnt'
     )
 
     return fig
@@ -395,6 +395,22 @@ def barplot_steps_vs_precip(df_merged, user_id):
         showlegend=False,
         template="plotly_white"
     )
+    return fig
+
+
+def active_minutes_piechart(df):
+    activity_level_averages = df[['VeryActiveMinutes', 'FairlyActiveMinutes', 'LightlyActiveMinutes', 'SedentaryMinutes']].mean()
+    
+    fig = px.pie(
+        values=activity_level_averages,
+        names=activity_level_averages.index,
+        hole=0.5,
+        title='Level of Daily Activity'
+    )
+
+    fig.update_traces(textinfo='percent+label', marker=dict(line=dict(color='#FFFFFF', width=2)))
+    fig.update_layout(showlegend=False)
+
     return fig
 
 

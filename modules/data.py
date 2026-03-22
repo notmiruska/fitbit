@@ -1,5 +1,4 @@
 import pandas as pd
-from datetime import datetime
 import numpy as np
 import requests
 import urllib.parse
@@ -312,3 +311,4 @@ def get_sleep_per_block(connection):
     df['AverageSleep'] = df['TotalMins'] / df['SessionsPerBlock']
 
     return df
+

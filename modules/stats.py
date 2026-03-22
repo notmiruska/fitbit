@@ -6,3 +6,4 @@ def steps_calories_regression(df):
     results = model.fit()
 
     return results.summary()
+

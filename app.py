@@ -62,38 +62,47 @@ def cached_load_weight_data(_connection):
     return load_weight_data(_connection)
 
 
-def display_general_stats(data, users, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks):
+def display_general_stats(data, users, df_daily_activity, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks):
     st.title("Fitbit Dashboard")
     st.header("General Statistics")
     
     # initialize tabs
-    tabs = st.tabs(['Overview', 'Activity Metrics', 'Sleep Metrics'])
+    tabs = st.tabs(['Overview', 'Activity', 'Sleep'])
 
     # Overview
     with tabs[0]:
         cols = st.columns(4)
         cols[0].metric("Number of Users", len(users))
-        cols[1].metric("Average Walked Distance (m)", round(daily_activity['TotalDistance'].mean(), 2))
+        cols[1].metric("Average Distance Walked", round(daily_activity['TotalDistance'].mean(), 2))
+        cols[2].metric("Average Steps per Day", int(np.floor(df_daily_activity['TotalSteps'].mean())))
 
         cols = st.columns(2)
         with cols[0]:
+            st.plotly_chart(active_minutes_piechart(df_daily_activity))
+        with cols[1]:
             # slider: display top 5 users by default, can slide up to 35
             number_of_users_to_show = st.slider(
                 "Select number of users to display",
                 min_value=5,
-                max_value=len(users),
-                value=min(5, len(users))
+                max_value=10,
+                value=min(5, 10)
             )
             data_to_show = daily_activity.head(number_of_users_to_show)
             st.plotly_chart(
                 plot_total_distance(data_to_show), 
                 use_container_width=True)
             
+
+        cols = st.columns(3)
+        with cols[0]:
+            
             st.plotly_chart(plot_workout_per_day(workout_per_day), use_container_width=True)
             
         with cols[1]:
-            st.plotly_chart(plot_regression_steps_calories(data))
-            st.plotly_chart(plot_steps_per_block(steps_blocks))
+            st.plotly_chart(plot_regression_steps_calories(data), use_container_width=True)
+
+        with cols[2]:
+            st.plotly_chart(plot_steps_per_block(steps_blocks), use_container_width=True)
     
     # Activity Metrics
     with tabs[1]:
@@ -129,7 +138,7 @@ def main():
     selected_user = st.sidebar.selectbox("Select a user", options=user_options, index=0)
 
     if selected_user == "":
-        display_general_stats(data, users, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks)
+        display_general_stats(data, users, df_daily_activity, daily_activity, workout_per_day, sleep_and_activity, steps_blocks, calories_blocks, sleep_blocks)
 
 
     if selected_user != "":
